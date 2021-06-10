@@ -57,3 +57,96 @@ _warning_color=$'\e[33m'
 _choice_color=$'\e[34m'
 _output_color=$'\e[35m'
 _no_color=$'\e[0m'
+
+###############################################################################
+# Helpers
+###############################################################################
+
+display_logo() {
+  echo -e "${SDOTIT_LOGO}\n"
+}
+
+###############################################################################
+# Safety Checks
+###############################################################################
+
+is_linux() {
+  [ "$OSTYPE" = "linux-gnu" ]
+}
+
+is_manjaro() {
+  if [ -f "/etc/os-release" ]; then
+    # shellcheck disable=SC1091
+    . "/etc/os-release"
+    [ "$ID" ] && [ "$ID" = "manjaro" ]
+  elif [ -f "/etc/lsb-release" ]; then
+    # shellcheck disable=SC1091
+    . "/etc/lsb-release"
+    [ "$DISTRIB_ID" ] && [ "$DISTRIB_ID" = "ManjaroLinux" ]
+  fi
+}
+
+check_os() {
+  echo "Identifying the operating system..."
+
+  if is_linux; then
+    echo -e "${_success_color}Success:${_no_color} Linux is supported."
+  else
+    echo -e "${_error_color}Error:${_no_color} Linux is the only supported operating system."
+    echo "Exit."
+    exit 1
+  fi
+
+  if ! is_manjaro; then
+    echo -e "${_warning_color}Warning:${_no_color} Sdotit has only been tested with Manjaro."
+  fi
+}
+
+is_git_installed() {
+  [ -x "$(command -v git)" ]
+}
+
+is_stow_installed() {
+  [ -x "$(command -v stow)" ]
+}
+
+check_commands() {
+  echo -e "\nChecking installed programs..."
+
+  if is_git_installed; then
+    echo -e "${_success_color}Success:${_no_color} Git is installed."
+  else
+    echo -e "${_error_color}Error:${_no_color} Sdotit needs Git to function properly."
+    echo -e "Please install it before using this program.\n"
+    echo "Exit."
+    exit 1
+  fi
+
+  if is_stow_installed; then
+    echo -e "${_success_color}Success:${_no_color} Stow is installed."
+  else
+    echo -e "${_error_color}Error:${_no_color} Sdotit needs GNU Stow to function properly."
+    echo -e "Please install it before using this program.\n"
+    echo "Exit."
+    exit 1
+  fi
+}
+
+check_requirements() {
+  echo "Checking requirements..."
+  check_os
+  check_commands
+  echo -e "${_success_color}Success:${_no_color} Requirements checked!"
+  echo -e "Let's continue.\n"
+}
+
+###############################################################################
+# Main
+###############################################################################
+
+main() {
+  display_logo
+  check_requirements
+}
+
+main "$@"
