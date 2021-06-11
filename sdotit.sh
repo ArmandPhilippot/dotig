@@ -401,6 +401,61 @@ get_repo_status() {
 }
 
 ###############################################################################
+# Menu
+###############################################################################
+
+return_menu() {
+  local _choice
+  while true; do
+    read -r -p "What do you want to do: return to the menu ${_choice_color}[r]${_no_color} or exit ${_choice_color}[q]${_no_color}? " _choice
+
+    case $_choice in
+    [rR]) return ;;
+    [qQ]) exit ;;
+    *)
+      echo -e "${_error_color}Error:${_no_color} invalid choice."
+      echo "Please enter ${_choice_color}[r]${_no_color}eturn or ${_choice_color}[e]${_no_color}xit: "
+      ;;
+    esac
+  done
+}
+
+print_menu_options() {
+  echo "Choose an action to perform:"
+  echo "${_choice_color}[1]${_no_color} Add dotfile(s) to your repo"
+  echo "${_choice_color}[2]${_no_color} Update symlinks"
+  echo "${_choice_color}[3]${_no_color} Commit dotfiles changes"
+  echo "${_choice_color}[4]${_no_color} Push changes to remote"
+  echo "${_choice_color}[5]${_no_color} Pull changes from remote"
+  echo "${_choice_color}[6]${_no_color} Remove all symlinks"
+  echo "${_choice_color}[7]${_no_color} Check for Sdotit update"
+  echo "${_choice_color}[8]${_no_color} Print Sdotit version"
+  echo "${_choice_color}[q]${_no_color} Exit"
+}
+
+print_menu() {
+  local _choice
+
+  while true; do
+    print_menu_options
+    read -r -p "Your choice: " _choice
+
+    case $_choice in
+    1) ;;
+    2) ;;
+    3) ;;
+    4) ;;
+    5) ;;
+    6) ;;
+    7) ;;
+    8) ;;
+    [qQ]) exit ;;
+    *) echo -e "\n${_error_color}Error:${_no_color} Invalid choice. Try again." ;;
+    esac
+  done
+}
+
+###############################################################################
 # Main
 ###############################################################################
 
@@ -410,6 +465,7 @@ main() {
   check_dotfiles_repo
   echo -e "\nWelcome!"
   get_repo_status
+  print_menu
 }
 
 main "$@"
