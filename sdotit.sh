@@ -298,7 +298,7 @@ is_remote_exists() {
 
   local -n _valid_remote=$1
 
-  echo -e "\nChecking if this URL exist. Your SSH passphrase might be asked."
+  echo -e "\nChecking if this URL exist. Your SSH passphrase can be requested."
 
   if ! git ls-remote "$_valid_remote" &> /dev/null; then
     while ! git ls-remote "$_valid_remote" &> /dev/null; do
@@ -376,6 +376,31 @@ check_dotfiles_repo() {
 }
 
 ###############################################################################
+# Repo Status
+###############################################################################
+
+get_repo_status() {
+  local _local_commit
+  local _remote_commit
+  local _common_ancestor
+
+  echo -e "\nChecking status..."
+  echo "Your SSH passphrase can be requested."
+  git -C "$SDOTIT_PATH" fetch
+
+  _local_commit=$(git -C "$SDOTIT_PATH" rev-parse HEAD)
+  _remote_commit=$(git -C "$SDOTIT_PATH" rev-parse FETCH_HEAD)
+  _common_ancestor=$(git -C "$SDOTIT_PATH" merge-base HEAD "$_remote_commit")
+
+  if [ "$_local_commit" = "$_remote_commit" ]; then
+    echo -e "Status: ${_success_color}up-to-date!${_no_color}\n"
+  else
+    [ "$_local_commit" = "$_common_ancestor" ] && echo -e "Status: ${_warning_color}pull needed!${_no_color}\n"
+    [ "$_remote_commit" = "$_common_ancestor" ] && echo -e "Status: ${_warning_color}push needed!${_no_color}\n"
+  fi
+}
+
+###############################################################################
 # Main
 ###############################################################################
 
@@ -383,6 +408,8 @@ main() {
   display_logo
   check_requirements
   check_dotfiles_repo
+  echo -e "\nWelcome!"
+  get_repo_status
 }
 
 main "$@"
