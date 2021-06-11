@@ -401,6 +401,46 @@ get_repo_status() {
 }
 
 ###############################################################################
+# Sdotit options
+###############################################################################
+
+print_version() {
+  echo -e "\nYour Sdotit version is: $SDOTIT_VERSION\n"
+  return_menu
+}
+
+get_latest_release() {
+  curl -s -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/ArmandPhilippot/sdotit/releases/latest
+}
+
+check_sdotit_updates() {
+  local _latest_release
+  local _tag_name
+  local _new_version
+  local _download_zip
+  local _download_link
+
+  _latest_release=$(get_latest_release)
+  _tag_name=$(echo "$_latest_release" | grep -Po '"tag_name":.*?[^\\]",')
+  _new_version=$(echo "$_tag_name" | grep -Po '(?=v).*(?=",)' | sed 's/^v//')
+
+  [ ! "$_latest_release" ] && echo "Error" && return_menu
+
+  if [ "$_new_version" = "$SDOTIT_VERSION" ]; then
+    echo -e "\n${_success_color}Success:${_no_color} Your Sdotit version is up to date!\n"
+  else
+    _download_zip=$(echo "$_latest_release" | grep -Po '"zipball_url":.*?[^\\]",')
+    _download_link=$(echo "$_download_zip" | grep -Po 'http.*(?=",)')
+
+    echo -e "\n${_warning_color}Warning:${_no_color} Your Sdotit version is outdated!"
+    echo -e "A new version is available: ${_new_version}\n"
+    echo -e "You can download it here: ${_download_link}\n"
+  fi
+
+  return_menu
+}
+
+###############################################################################
 # Menu
 ###############################################################################
 
@@ -447,8 +487,8 @@ print_menu() {
     4) ;;
     5) ;;
     6) ;;
-    7) ;;
-    8) ;;
+    7) check_sdotit_updates ;;
+    8) print_version ;;
     [qQ]) exit ;;
     *) echo -e "\n${_error_color}Error:${_no_color} Invalid choice. Try again." ;;
     esac
