@@ -419,22 +419,27 @@ check_sdotit_updates() {
   local _new_version
   local _download_zip
   local _download_link
+  local _not_found
 
   _latest_release=$(get_latest_release)
-  _tag_name=$(echo "$_latest_release" | grep -Po '"tag_name":.*?[^\\]",')
-  _new_version=$(echo "$_tag_name" | grep -Po '(?=v).*(?=",)' | sed 's/^v//')
+  _not_found=$(echo "$_latest_release" | { grep -Po '"message": "Not Found"' || true; })
 
-  [ ! "$_latest_release" ] && echo "Error" && return_menu
-
-  if [ "$_new_version" = "$SDOTIT_VERSION" ]; then
-    echo -e "\n${_success_color}Success:${_no_color} Your Sdotit version is up to date!\n"
+  if [ "$_not_found" ] ; then
+    echo -e "\n${_error_color}Error:${_no_color} could not find any release..."
   else
-    _download_zip=$(echo "$_latest_release" | grep -Po '"zipball_url":.*?[^\\]",')
-    _download_link=$(echo "$_download_zip" | grep -Po 'http.*(?=",)')
+    _tag_name=$(echo "$_latest_release" | grep -Po '"tag_name":.*?[^\\]",')
+    _new_version=$(echo "$_tag_name" | grep -Po '(?=v).*(?=",)' | sed 's/^v//')
 
-    echo -e "\n${_warning_color}Warning:${_no_color} Your Sdotit version is outdated!"
-    echo -e "A new version is available: ${_new_version}\n"
-    echo -e "You can download it here: ${_download_link}\n"
+    if [ "$_new_version" = "$SDOTIT_VERSION" ]; then
+      echo -e "\n${_success_color}Success:${_no_color} Your Sdotit version is up to date!\n"
+    else
+      _download_zip=$(echo "$_latest_release" | grep -Po '"zipball_url":.*?[^\\]",')
+      _download_link=$(echo "$_download_zip" | grep -Po 'http.*(?=",)')
+
+      echo -e "\n${_warning_color}Warning:${_no_color} Your Sdotit version is outdated!"
+      echo -e "A new version is available: ${_new_version}\n"
+      echo -e "You can download it here: ${_download_link}\n"
+    fi
   fi
 
   return_menu
