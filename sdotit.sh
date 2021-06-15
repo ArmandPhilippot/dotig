@@ -446,6 +446,100 @@ check_sdotit_updates() {
 }
 
 ###############################################################################
+# Symlinking options
+###############################################################################
+
+get_absolute_path() {
+  [ $# -ne 1 ] && error_callback
+
+  local -n _file=$1
+  local _absolute_path
+
+  case $_file in
+  /*) _absolute_path=$_file;;
+  \~/*) _absolute_path="$HOME/${_file:2}" ;;
+  ./*) _absolute_path="$(pwd)/${_file:2}" ;;
+  *) _absolute_path="$(pwd)/$_file" ;;
+  esac
+
+  eval "$1=$_absolute_path"
+}
+
+print_diff() {
+  if diff -q "$1" "$2" &> /dev/null; then
+    echo "Both files are identical".
+  else
+    echo "The two files are different. See the diff:"
+    diff --color -u "$1" "$2" || [ $? -eq 1 ]
+  fi
+}
+
+handle_duplicate() {
+  local _choice
+  local _home_dotfile=$1
+  local _backup_dotfile=$2
+
+  echo "${_warning_color}Warning:${_no_color} A file with the same name already exists."
+
+  [ -h "$_backup_dotfile" ] && echo "${_warning_color}Warning:${_no_color} ${_output_color}${_backup_dotfile}${_no_color} is a symlink."
+  [ -h "$_home_dotfile" ] && echo "${_warning_color}Warning:${_no_color} ${_output_color}${_home_dotfile}${_no_color} is a symlink."
+
+  echo "How do you want to proceed?"
+  echo "${_choice_color}[1]${_no_color} Show diff"
+  echo "${_choice_color}[2]${_no_color} Use ${_output_color}${_home_dotfile}${_no_color} (delete the other)"
+  echo "${_choice_color}[3]${_no_color} Use ${_output_color}${_backup_dotfile}${_no_color} (delete the other)"
+  echo "${_choice_color}[4]${_no_color} Skip this file"
+
+  while read -r -p "Your choice: " _choice; do
+    case $_choice in
+      1) print_diff "$_home_dotfile" "$_backup_dotfile" ;;
+      2)
+        echo "Deleting ${_output_color}${_backup_dotfile}${_no_color} and creating symlink..."
+        mv -f "$_home_dotfile" "$_backup_dotfile"
+        ln -s "$_backup_dotfile" "$_home_dotfile"
+        echo -e "Done.\n"
+        break
+        ;;
+      3)
+        echo "Deleting ${_output_color}${_home_dotfile}${_no_color} and creating symlink..."
+        rm "$_home_dotfile"
+        ln -s "$_backup_dotfile" "$_home_dotfile"
+        echo -e "Done.\n"
+        break
+        ;;
+      4)
+        echo -e "${_warning_color}Skipped:${_no_color} ${_home_dotfile}\n"
+        break
+        ;;
+      *) echo "${_error_color}Error:${_no_color} choose between ${_choice_color}[1]${_no_color}, ${_choice_color}[2]${_no_color}, ${_choice_color}[3]${_no_color} or ${_choice_color}[4]${_no_color}."
+    esac
+  done
+}
+
+add_dotfiles() {
+  local _dotfiles
+  local _dest
+
+  echo
+  read -r -e -p "Enter the dotfiles names: " -a _dotfiles
+
+  for _dotfile in "${_dotfiles[@]}"; do
+    get_absolute_path _dotfile
+    _dest="$SDOTIT_PATH/home${_dotfile#$HOME}"
+    if [ -f "$_dest" ]; then
+      handle_duplicate "$_dotfile" "$_dest"
+    else
+      mkdir -p "$(dirname "$_dest")"
+      mv "$_dotfile" "$_dest"
+      ln -s "$_dest" "$_dotfile"
+      echo -e "${_success_color}Success:${_no_color} $_dotfile moved and symlink created.\n"
+    fi
+  done
+
+  return_menu
+}
+
+###############################################################################
 # Menu
 ###############################################################################
 
@@ -486,7 +580,7 @@ print_menu() {
     read -r -p "Your choice: " _choice
 
     case $_choice in
-    1) ;;
+    1) add_dotfiles ;;
     2) ;;
     3) ;;
     4) ;;
