@@ -539,6 +539,73 @@ add_dotfiles() {
   return_menu
 }
 
+replace_symlink_with_file() {
+  [ $# -ne 2 ] && error_callback
+
+  local _symlink=$1
+  local _backup_file=$2
+
+  cp --remove-destination "$_backup_file" "$_symlink"
+  echo "${_success_color}Success:${_no_color} $_symlink replaced with $_backup_file"
+}
+
+handle_target_issue() {
+  [ $# -ne 3 ] && error_callback
+
+  local _symlink=$1
+  local _target=$2
+  local _backup_file=$3
+
+  echo -e "\n${_warning_color}Warning:${_no_color} The symlink target does not match with your backup file:"
+  echo "* Symlink: ${_output_color}${_symlink}${_no_color}"
+  echo "* Symlink target: ${_output_color}${_target}${_no_color}"
+  echo "* Backup file: ${_output_color}${_backup_file}${_no_color}"
+
+  echo -e "How do you want to proceed?"
+  echo "${_choice_color}[1]${_no_color} Replace symlink with backup file"
+  echo "${_choice_color}[2]${_no_color} Skip this symlink"
+
+  while read -r -p "Your choice: " _choice; do
+    case $_choice in
+    1)
+      replace_symlink_with_file "$_symlink" "$_backup_file"
+      break
+      ;;
+    2)
+      echo -e "\n${_warning_color}Skipped:${_no_color} $_symlink"
+      break
+      ;;
+    *) echo "${_error_color}Error:${_no_color} Enter ${_choice_color}[1]${_no_color} or ${_choice_color}[2]${_no_color}." ;;
+    esac
+  done
+}
+
+remove_symlinks() {
+  local _symlink_target
+  local _expected_target
+
+  echo -e "\nReplacing symlinks with original files..."
+
+  while IFS= read -r -d '' symlink <&3; do
+    _symlink_target=$(readlink "$symlink")
+    case $_symlink_target in
+      $SDOTIT_PATH/*)
+        _expected_target="${SDOTIT_PATH}/home${symlink#$HOME}"
+        if [ "$_expected_target" = "$_symlink_target" ]; then
+          replace_symlink_with_file "$symlink" "$_expected_target"
+        else
+          handle_target_issue "$symlink" "$_symlink_target" "$_expected_target"
+        fi
+        ;;
+      *) ;;
+    esac
+  done 3< <(find "$HOME" -type l -not \( -path "$SDOTIT_PATH/*" -prune \) -print0)
+
+  echo -e "\n${_success_color}Success:${_no_color} Done. Symlinks have been replaced except those that have possibly been manually skipped.\n"
+
+  return_menu
+}
+
 ###############################################################################
 # Menu
 ###############################################################################
@@ -585,7 +652,7 @@ print_menu() {
     3) ;;
     4) ;;
     5) ;;
-    6) ;;
+    6) remove_symlinks ;;
     7) check_sdotit_updates ;;
     8) print_version ;;
     [qQ]) exit ;;
