@@ -466,11 +466,26 @@ get_absolute_path() {
 }
 
 print_diff() {
-  if diff -q "$1" "$2" &> /dev/null; then
+  local _home_dotfile=$1
+  local _backup_dotfile=$2
+  local _filename
+  local _column_width=$(("$COLUMNS" / 2))
+  local _padding
+  local _padding_lenght
+  local _divider
+
+  _filename=$(basename "$_home_dotfile")
+  _padding=$(printf '%*s' "$COLUMNS" "")
+  _padding_lenght=$((_column_width - ${#HOME}))
+  _divider=${_padding// /=}
+
+  if diff -q "$_home_dotfile" "$_backup_dotfile" &> /dev/null; then
     echo -e "\nBoth files are identical."
   else
-    echo -e "\nThe two files are different. See the diff:"
-    diff --color -y --width=$COLUMNS -t --suppress-common-lines "$1" "$2" || [ $? -eq 1 ]
+    echo -e "\nThe two files are different. See the diff of ${_output_color}${_filename}${_no_color}:"
+    printf "%s%0.${_padding_lenght}s%s\n" "$HOME" "$_padding" "$SDOTIT_PATH";
+    printf "%s\n" "$_divider";
+    command diff --color -y --width=$COLUMNS -t --suppress-common-lines "$_home_dotfile" "$_backup_dotfile" || [ $? -eq 1 ]
   fi
 }
 
