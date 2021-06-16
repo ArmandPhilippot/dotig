@@ -467,11 +467,18 @@ get_absolute_path() {
 
 print_diff() {
   if diff -q "$1" "$2" &> /dev/null; then
-    echo "Both files are identical".
+    echo -e "\nBoth files are identical."
   else
-    echo "The two files are different. See the diff:"
-    diff --color -u "$1" "$2" || [ $? -eq 1 ]
+    echo -e "\nThe two files are different. See the diff:"
+    diff --color -y --width=$COLUMNS -t --suppress-common-lines "$1" "$2" || [ $? -eq 1 ]
   fi
+}
+
+print_handle_duplicate_menu() {
+  echo "${_choice_color}[1]${_no_color} Show diff"
+  echo "${_choice_color}[2]${_no_color} Use ${_output_color}${_home_dotfile}${_no_color} (delete the other)"
+  echo "${_choice_color}[3]${_no_color} Use ${_output_color}${_backup_dotfile}${_no_color} (delete the other)"
+  echo "${_choice_color}[4]${_no_color} Skip this file"
 }
 
 handle_duplicate() {
@@ -485,14 +492,15 @@ handle_duplicate() {
   [ -h "$_home_dotfile" ] && echo "${_warning_color}Warning:${_no_color} ${_output_color}${_home_dotfile}${_no_color} is a symlink."
 
   echo "How do you want to proceed?"
-  echo "${_choice_color}[1]${_no_color} Show diff"
-  echo "${_choice_color}[2]${_no_color} Use ${_output_color}${_home_dotfile}${_no_color} (delete the other)"
-  echo "${_choice_color}[3]${_no_color} Use ${_output_color}${_backup_dotfile}${_no_color} (delete the other)"
-  echo "${_choice_color}[4]${_no_color} Skip this file"
 
-  while read -r -p "Your choice: " _choice; do
+  while true; do
+    print_handle_duplicate_menu
+    read -r -p "Your choice: " _choice
     case $_choice in
-      1) print_diff "$_home_dotfile" "$_backup_dotfile" ;;
+      1)
+        print_diff "$_home_dotfile" "$_backup_dotfile"
+        echo
+        ;;
       2)
         echo "Deleting ${_output_color}${_backup_dotfile}${_no_color} and creating symlink..."
         mv -f "$_home_dotfile" "$_backup_dotfile"
@@ -535,6 +543,104 @@ add_dotfiles() {
       echo -e "${_success_color}Success:${_no_color} $_dotfile moved and symlink created.\n"
     fi
   done
+
+  return_menu
+}
+
+get_submodules_path() {
+  # shellcheck disable=SC2016
+  git -C "${SDOTIT_PATH}" submodule -q foreach 'echo $sm_path'
+}
+
+find_cmd() {
+  local _find_cmd
+  local _exclude_dirs=()
+
+  while IFS='' read -r line; do _exclude_dirs+=("$line"); done < <(get_submodules_path)
+
+  _exclude_dirs+=('.git')
+
+  _find_cmd=( find "$SDOTIT_PATH" -mindepth 2 -type f )
+
+  for _exclude_dir in "${_exclude_dirs[@]}"; do
+    _find_cmd+=( -not \( -path "$SDOTIT_PATH/${_exclude_dir}/*" -prune \) )
+  done
+  _find_cmd+=( -print0 )
+
+  "${_find_cmd[@]}"
+}
+
+handle_update_target() {
+  [ $# -ne 3 ] && error_callback
+
+  local _file=$1
+  local _symlink=$2
+  local _target=$3
+
+  echo -e "\n${_warning_color}Warning:${_no_color} A symlink exists but its target does not match your dotfile backup:"
+  echo "* Symlink: ${_output_color}${_symlink}${_no_color}"
+  echo "* Symlink target: ${_output_color}${_target}${_no_color}"
+  echo "* Dotfile backup: ${_output_color}${_file}${_no_color}"
+
+  echo -e "How do you want to proceed?"
+  echo "${_choice_color}[1]${_no_color} Update the symlink"
+  echo "${_choice_color}[2]${_no_color} Skip this file"
+
+  while read -r -p "Your choice: " _choice; do
+    case $_choice in
+    1)
+      ln -s -f "$file" "$_symlink"
+      echo -e "${_success_color}Success:${_no_color} $_symlink updated."
+      ;;
+    2)
+      echo -e "\n${_warning_color}Skipped:${_no_color} $_file"
+      break
+      ;;
+    *) echo "${_error_color}Error:${_no_color} Enter ${_choice_color}[1]${_no_color} or ${_choice_color}[2]${_no_color}." ;;
+    esac
+  done
+}
+
+target_in_sdotit_dir() {
+  [ $# -ne 3 ] && error_callback
+
+  local _file=$1
+  local _symlink=$2
+  local _symlink_target=$3
+  local _choice
+
+  if [ "$_symlink_target" = "$_file" ]; then
+    echo "A symlink with the same target already exists."
+    echo "${_warning_color}Skipped:${_no_color} $file"
+  else
+    handle_update_target "$_file" "$_symlink" "$_symlink_target"
+  fi
+}
+
+update_symlinks() {
+  local _symlink
+  local _symlink_target
+
+  echo -e "\nCreating symlink..."
+
+  while IFS= read -r -d '' file <&3; do
+    if [ -h "$HOME${file#$SDOTIT_PATH/home}" ]; then
+      _symlink="$HOME${file#$SDOTIT_PATH/home}"
+      _symlink_target=$(readlink -f "$_symlink")
+      case $_symlink_target in
+        $SDOTIT_PATH/*) target_in_sdotit_dir "$file" "$_symlink" "$_symlink_target" ;;
+        *) handle_update_target "$file" "$_symlink" "$_symlink_target" ;;
+      esac
+    elif [ -f "$HOME${file#$SDOTIT_PATH/home}" ]; then
+      echo
+      handle_duplicate "$HOME${file#$SDOTIT_PATH/home}" "$file"
+    else
+      ln -s "$file" "$HOME/${file#$SDOTIT_PATH/home}"
+      echo "${_success_color}Success:${_no_color} Symlink created for $file"
+    fi
+  done 3< <(find_cmd)
+
+  echo -e "\n${_success_color}Success:${_no_color} Done. Symlinks have been updated except those that have possibly been manually skipped.\n"
 
   return_menu
 }
@@ -648,7 +754,7 @@ print_menu() {
 
     case $_choice in
     1) add_dotfiles ;;
-    2) ;;
+    2) update_symlinks ;;
     3) ;;
     4) ;;
     5) ;;
