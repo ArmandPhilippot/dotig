@@ -379,6 +379,18 @@ check_dotfiles_repo() {
 # Repo Status
 ###############################################################################
 
+is_repo_dirty() {
+  local _dirty_files
+
+  _dirty_files=$(git -C "$SDOTIT_PATH" status --porcelain | wc -l)
+
+  if [ "$_dirty_files" -ne 0 ]; then
+    echo -e "Status: ${_warning_color}dirty repo!${_no_color}"
+  else
+    echo -e "Status: ${_success_color}clean repo!${_no_color}"
+  fi
+}
+
 get_repo_status() {
   local _local_commit
   local _remote_commit
@@ -393,11 +405,14 @@ get_repo_status() {
   _common_ancestor=$(git -C "$SDOTIT_PATH" merge-base HEAD "$_remote_commit")
 
   if [ "$_local_commit" = "$_remote_commit" ]; then
-    echo -e "Status: ${_success_color}up-to-date!${_no_color}\n"
+    echo -e "Status: ${_success_color}up-to-date!${_no_color}"
   else
-    [ "$_local_commit" = "$_common_ancestor" ] && echo -e "Status: ${_warning_color}pull needed!${_no_color}\n"
-    [ "$_remote_commit" = "$_common_ancestor" ] && echo -e "Status: ${_warning_color}push needed!${_no_color}\n"
+    [ "$_local_commit" = "$_common_ancestor" ] && echo -e "Status: ${_warning_color}pull needed!${_no_color}"
+    [ "$_remote_commit" = "$_common_ancestor" ] && echo -e "Status: ${_warning_color}push needed!${_no_color}"
   fi
+
+  is_repo_dirty
+  echo
 }
 
 ###############################################################################
