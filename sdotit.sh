@@ -560,7 +560,7 @@ find_cmd() {
 
   _exclude_dirs+=('.git')
 
-  _find_cmd=( find "$SDOTIT_PATH" -mindepth 2 -type f )
+  _find_cmd=( find "$SDOTIT_PATH" -mindepth 2 \( -type f -o -type l \) )
 
   for _exclude_dir in "${_exclude_dirs[@]}"; do
     _find_cmd+=( -not \( -path "$SDOTIT_PATH/${_exclude_dir}/*" -prune \) )
@@ -576,11 +576,14 @@ handle_update_target() {
   local _file=$1
   local _symlink=$2
   local _target=$3
+  local _extra_info=""
+
+  [ -h "$_file" ] && _extra_info=" (also a symlink)"
 
   echo -e "\n${_warning_color}Warning:${_no_color} A symlink exists but its target does not match your dotfile backup:"
   echo "* Symlink: ${_output_color}${_symlink}${_no_color}"
   echo "* Symlink target: ${_output_color}${_target}${_no_color}"
-  echo "* Dotfile backup: ${_output_color}${_file}${_no_color}"
+  echo "* Dotfile backup${_extra_info}: ${_output_color}${_file}${_no_color}"
 
   echo -e "How do you want to proceed?"
   echo "${_choice_color}[1]${_no_color} Update the symlink"
@@ -591,6 +594,7 @@ handle_update_target() {
     1)
       ln -s -f "$file" "$_symlink"
       echo -e "${_success_color}Success:${_no_color} $_symlink updated."
+      break
       ;;
     2)
       echo -e "\n${_warning_color}Skipped:${_no_color} $_file"
