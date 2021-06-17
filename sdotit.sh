@@ -436,6 +436,64 @@ is_repo_dirty() {
   [ "$_dirty_files_count" -ne 0 ]
 }
 
+get_untracked_files_count() {
+  git -C "$SDOTIT_PATH" status --porcelain | grep -c "^??"
+}
+
+get_staged_files_count() {
+  git -C "$SDOTIT_PATH" status --porcelain | grep -c "^A"
+}
+
+get_deleted_files_count() {
+  git -C "$SDOTIT_PATH" status --porcelain | grep -c "^.D"
+}
+
+get_renamed_files_count() {
+  git -C "$SDOTIT_PATH" status --porcelain | grep -c "^R"
+}
+
+get_modified_files_count() {
+  git -C "$SDOTIT_PATH" status --porcelain | grep -c "^.M"
+}
+
+get_unmerged_files_count() {
+  git -C "$SDOTIT_PATH" ls-files --unmerged | wc -l
+}
+
+get_stashed_files_count() {
+  git -C "$SDOTIT_PATH" stash list | wc -l
+}
+
+get_expanded_status() {
+  local _untracked_files_count
+  local _staged_files_count
+  local _deleted_files_count
+  local _renamed_files_count
+  local _modified_files_count
+  local _unmerged_files_count
+  local _stashed_files_count
+  local _expanded_status
+
+  _untracked_files_count=$(get_untracked_files_count) || true
+  _staged_files_count=$(get_staged_files_count) || true
+  _deleted_files_count=$(get_deleted_files_count) || true
+  _renamed_files_count=$(get_renamed_files_count) || true
+  _modified_files_count=$(get_modified_files_count) || true
+  _unmerged_files_count=$(get_unmerged_files_count) || true
+  _stashed_files_count=$(get_stashed_files_count) || true
+
+  _expanded_status="You have:\n"
+  [ "$_untracked_files_count" -gt 0 ] && _expanded_status+="* $_untracked_files_count untracked files\n"
+  [ "$_staged_files_count" -gt 0 ] && _expanded_status+="* $_staged_files_count staged files\n"
+  [ "$_deleted_files_count" -gt 0 ] && _expanded_status+="* $_deleted_files_count deleted files\n"
+  [ "$_renamed_files_count" -gt 0 ] && _expanded_status+="* $_renamed_files_count renamed files"
+  [ "$_modified_files_count" -gt 0 ] && _expanded_status+="* $_modified_files_count modified files\n"
+  [ "$_unmerged_files_count" -gt 0 ] && _expanded_status+="* $_unmerged_files_count unmerged files\n"
+  [ "$_stashed_files_count" -gt 0 ] && _expanded_status+="* $_stashed_files_count stashed files\n"
+
+  echo -e "$_expanded_status"
+}
+
 get_repo_status() {
   echo -e "\nChecking status..."
   echo "Your SSH passphrase can be requested."
@@ -450,11 +508,10 @@ get_repo_status() {
 
   if is_repo_dirty; then
     echo -e "Status: ${_warning_color}dirty repo!${_no_color}"
+    get_expanded_status
   else
-    echo -e "Status: ${_success_color}clean repo!${_no_color}"
+    echo -e "Status: ${_success_color}clean repo!${_no_color}\n"
   fi
-
-  echo
 }
 
 ###############################################################################
