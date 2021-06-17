@@ -1,11 +1,12 @@
 #!/bin/bash
 #
-# Sdotit
-# A dotfiles manager to quickly setup your machine & synchronize your dotfiles.
+# Dotig
+# A dotfiles manager to quickly setup your machine & synchronize your dotfiles
+# with Git.
 #
-# Requirements: Git and GNU Stow.
+# Requirements: Git and GNU Coreutils.
 # Author: Armand Philippot <https://www.armandphilippot.com/>
-# URL: https://github.com/ArmandPhilippot/sdotit
+# URL: https://github.com/ArmandPhilippot/dotig
 
 ###############################################################################
 #
@@ -35,21 +36,21 @@
 
 set -e
 
-SDOTIT_VERSION="0.1.0"
-SDOTIT_LOGO=$(
+DOTIG_VERSION="0.1.0"
+DOTIG_LOGO=$(
   cat <<-EOF
-################################################################
-##                 _____                                      ##
-##                / ____|    _       _   _ _                  ##
-##               | (___   __| | ___ | |_(_) |_                ##
-##                \___ \ / _  |/ _ \| __| | __|               ##
-##                ____) | (_| | (_) | |_| | |_                ##
-##               |_____/ \__,_|\___/ \__|_|\__|               ##
-##                                                            ##
-################################################################
+#####################################################################
+##                     ____        _   _                           ##
+##                    |  _ \  ___ | |_(_) __ _                     ##
+##                    | | | |/ _ \| __| |/ _  |                    ##
+##                    | |_| | (_) | |_| | (_| |                    ##
+##                    |____/ \___/ \__|_|\__, |                    ##
+##                                       |___/                     ##
+##                                                                 ##
+#####################################################################
 EOF
 )
-SDOTIT_PATH=""
+DOTIG_PATH=""
 
 
 _error_color=$'\e[31m'
@@ -64,7 +65,7 @@ _no_color=$'\e[0m'
 ###############################################################################
 
 display_logo() {
-  echo -e "${SDOTIT_LOGO}\n"
+  echo -e "${DOTIG_LOGO}\n"
 }
 
 error_callback() {
@@ -136,7 +137,7 @@ check_os() {
   fi
 
   if ! is_manjaro; then
-    echo -e "${_warning_color}Warning:${_no_color} Sdotit has only been tested with Manjaro."
+    echo -e "${_warning_color}Warning:${_no_color} Dotig has only been tested with Manjaro."
   fi
 }
 
@@ -154,7 +155,7 @@ check_commands() {
   if is_git_installed; then
     echo -e "${_success_color}Success:${_no_color} Git is installed."
   else
-    echo -e "${_error_color}Error:${_no_color} Sdotit needs Git to function properly."
+    echo -e "${_error_color}Error:${_no_color} Dotig needs Git to function properly."
     echo -e "Please install it before using this program.\n"
     echo "Exit."
     exit 1
@@ -163,7 +164,7 @@ check_commands() {
   if is_stow_installed; then
     echo -e "${_success_color}Success:${_no_color} Stow is installed."
   else
-    echo -e "${_error_color}Error:${_no_color} Sdotit needs GNU Stow to function properly."
+    echo -e "${_error_color}Error:${_no_color} Dotig needs GNU Stow to function properly."
     echo -e "Please install it before using this program.\n"
     echo "Exit."
     exit 1
@@ -194,7 +195,7 @@ set_dotfiles_dir() {
 is_dotfiles_dir_set() {
   local _dotfiles_path
 
-  echo -e "For conveniance, Sdotit uses a \$DOTFILES variable to determine the dotfiles backup path. If it is not set, you may want to declare it for future use.\n"
+  echo -e "For conveniance, Dotig uses a \$DOTFILES variable to determine the dotfiles backup path. If it is not set, you may want to declare it for future use.\n"
   echo "Checking if a \$DOTFILES variable is set..."
 
   if [ ! "$DOTFILES" ]; then
@@ -213,17 +214,17 @@ is_dotfiles_dir_set() {
 }
 
 get_current_branch() {
-  git -C "${SDOTIT_PATH}" symbolic-ref --quiet --short HEAD
+  git -C "${DOTIG_PATH}" symbolic-ref --quiet --short HEAD
 }
 
 get_branch_upstream() {
   local _git_branch
   _git_branch=$(get_current_branch)
-  git -C "${SDOTIT_PATH}" config branch."${_git_branch}".remote &> /dev/null
+  git -C "${DOTIG_PATH}" config branch."${_git_branch}".remote &> /dev/null
 }
 
 get_existing_remotes() {
-  git -C "${SDOTIT_PATH}" remote
+  git -C "${DOTIG_PATH}" remote
 }
 
 is_valid_remote_name() {
@@ -272,7 +273,7 @@ set_branch_upstream() {
     _remote_name=$_git_remotes
   fi
 
-  git -C "${SDOTIT_PATH}" config branch."${_git_branch}".remote "$_remote_name"
+  git -C "${DOTIG_PATH}" config branch."${_git_branch}".remote "$_remote_name"
   echo "${_success_color}Success:${_no_color} Upstream set."
 }
 
@@ -311,7 +312,7 @@ is_remote_exists() {
 set_remote() {
   local _remote
 
-  echo -e "Sdotit needs to know your remote to perform some actions (status, push, pull)."
+  echo -e "Dotig needs to know your remote to perform some actions (status, push, pull)."
   read -r -p "Please enter your remote address: " _remote
 
   while ! is_valid_remote_url "$_remote"; do
@@ -320,26 +321,26 @@ set_remote() {
   done
 
   is_remote_exists _remote
-  git -C "${SDOTIT_PATH}" remote add origin "$_remote"
+  git -C "${DOTIG_PATH}" remote add origin "$_remote"
   echo "${_success_color}Success:${_no_color} Remote set."
 }
 
 is_remote_set() {
-  if ! git -C "${SDOTIT_PATH}" config --get-regexp '^remote\.' &> /dev/null; then
-    echo -e "\nSdotit is a Git repository but the remote is not set."
+  if ! git -C "${DOTIG_PATH}" config --get-regexp '^remote\.' &> /dev/null; then
+    echo -e "\nDotig is a Git repository but the remote is not set."
     set_remote
   fi
 }
 
 init_git() {
-  git -C "$SDOTIT_PATH" init
+  git -C "$DOTIG_PATH" init
   echo
   set_remote
   set_branch_upstream
 }
 
 is_git_repo() {
-  git -C "$SDOTIT_PATH" rev-parse --git-dir &> /dev/null
+  git -C "$DOTIG_PATH" rev-parse --git-dir &> /dev/null
 }
 
 is_git_configured() {
@@ -356,7 +357,7 @@ is_git_configured() {
           return 0
           ;;
         [nN])
-          echo -e "\n${_warning_color}Warning:${_no_color} Sdotit needs a Git repository to properly function. Please configure it manually before using this program."
+          echo -e "\n${_warning_color}Warning:${_no_color} Dotig needs a Git repository to properly function. Please configure it manually before using this program."
           echo "Exit."
           exit
           ;;
@@ -370,7 +371,7 @@ is_git_configured() {
 }
 
 check_dotfiles_repo() {
-  is_dotfiles_dir_set SDOTIT_PATH
+  is_dotfiles_dir_set DOTIG_PATH
   is_git_configured
   echo -e "${_success_color}Success:${_no_color} Your dotfiles repo is ready."
 }
@@ -380,22 +381,22 @@ check_dotfiles_repo() {
 ###############################################################################
 
 update_remote_tracking() {
-  git -C "$SDOTIT_PATH" fetch
+  git -C "$DOTIG_PATH" fetch
 }
 
 get_local_commit() {
-  git -C "$SDOTIT_PATH" rev-parse HEAD
+  git -C "$DOTIG_PATH" rev-parse HEAD
 }
 
 get_remote_commit() {
-  git -C "$SDOTIT_PATH" rev-parse FETCH_HEAD
+  git -C "$DOTIG_PATH" rev-parse FETCH_HEAD
 }
 
 get_common_ancestor() {
   local _remote_commit
   _remote_commit=$(get_remote_commit)
 
-  git -C "$SDOTIT_PATH" merge-base HEAD "$_remote_commit"
+  git -C "$DOTIG_PATH" merge-base HEAD "$_remote_commit"
 }
 
 is_repo_up_to_date() {
@@ -426,7 +427,7 @@ is_push_needed() {
 }
 
 get_dirty_files_count() {
-  git -C "$SDOTIT_PATH" status --porcelain | wc -l
+  git -C "$DOTIG_PATH" status --porcelain | wc -l
 }
 
 is_repo_dirty() {
@@ -437,31 +438,31 @@ is_repo_dirty() {
 }
 
 get_untracked_files_count() {
-  git -C "$SDOTIT_PATH" status --porcelain | grep -c "^??"
+  git -C "$DOTIG_PATH" status --porcelain | grep -c "^??"
 }
 
 get_staged_files_count() {
-  git -C "$SDOTIT_PATH" status --porcelain | grep -c "^[A|M]"
+  git -C "$DOTIG_PATH" status --porcelain | grep -c "^[A|M]"
 }
 
 get_deleted_files_count() {
-  git -C "$SDOTIT_PATH" status --porcelain | grep -c "^.D"
+  git -C "$DOTIG_PATH" status --porcelain | grep -c "^.D"
 }
 
 get_renamed_files_count() {
-  git -C "$SDOTIT_PATH" status --porcelain | grep -c "^R"
+  git -C "$DOTIG_PATH" status --porcelain | grep -c "^R"
 }
 
 get_modified_files_count() {
-  git -C "$SDOTIT_PATH" status --porcelain | grep -c "^.M"
+  git -C "$DOTIG_PATH" status --porcelain | grep -c "^.M"
 }
 
 get_unmerged_files_count() {
-  git -C "$SDOTIT_PATH" ls-files --unmerged | wc -l
+  git -C "$DOTIG_PATH" ls-files --unmerged | wc -l
 }
 
 get_stashed_files_count() {
-  git -C "$SDOTIT_PATH" stash list | wc -l
+  git -C "$DOTIG_PATH" stash list | wc -l
 }
 
 get_expanded_status() {
@@ -515,19 +516,19 @@ get_repo_status() {
 }
 
 ###############################################################################
-# Sdotit options
+# Dotig options
 ###############################################################################
 
 print_version() {
-  echo -e "\nYour Sdotit version is: $SDOTIT_VERSION\n"
+  echo -e "\nYour Dotig version is: $DOTIG_VERSION\n"
   return_menu
 }
 
 get_latest_release() {
-  curl -s -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/ArmandPhilippot/sdotit/releases/latest
+  curl -s -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/ArmandPhilippot/dotig/releases/latest
 }
 
-check_sdotit_updates() {
+check_dotig_updates() {
   local _latest_release
   local _tag_name
   local _new_version
@@ -544,13 +545,13 @@ check_sdotit_updates() {
     _tag_name=$(echo "$_latest_release" | grep -Po '"tag_name":.*?[^\\]",')
     _new_version=$(echo "$_tag_name" | grep -Po '(?=v).*(?=",)' | sed 's/^v//')
 
-    if [ "$_new_version" = "$SDOTIT_VERSION" ]; then
-      echo -e "\n${_success_color}Success:${_no_color} Your Sdotit version is up to date!\n"
+    if [ "$_new_version" = "$DOTIG_VERSION" ]; then
+      echo -e "\n${_success_color}Success:${_no_color} Your Dotig version is up to date!\n"
     else
       _download_zip=$(echo "$_latest_release" | grep -Po '"zipball_url":.*?[^\\]",')
       _download_link=$(echo "$_download_zip" | grep -Po 'http.*(?=",)')
 
-      echo -e "\n${_warning_color}Warning:${_no_color} Your Sdotit version is outdated!"
+      echo -e "\n${_warning_color}Warning:${_no_color} Your Dotig version is outdated!"
       echo -e "A new version is available: ${_new_version}\n"
       echo -e "You can download it here: ${_download_link}\n"
     fi
@@ -597,7 +598,7 @@ print_diff() {
     echo -e "\nBoth files are identical."
   else
     echo -e "\nThe two files are different. See the diff of ${_output_color}${_filename}${_no_color}:"
-    printf "%s%0.${_padding_lenght}s%s\n" "$HOME" "$_padding" "$SDOTIT_PATH";
+    printf "%s%0.${_padding_lenght}s%s\n" "$HOME" "$_padding" "$DOTIG_PATH";
     printf "%s\n" "$_divider";
     command diff --color -y --width=$COLUMNS -t --suppress-common-lines "$_home_dotfile" "$_backup_dotfile" || [ $? -eq 1 ]
   fi
@@ -662,7 +663,7 @@ add_dotfiles() {
 
   for _dotfile in "${_dotfiles[@]}"; do
     get_absolute_path _dotfile
-    _dest="$SDOTIT_PATH/home${_dotfile#$HOME}"
+    _dest="$DOTIG_PATH/home${_dotfile#$HOME}"
     if [ -f "$_dest" ]; then
       handle_duplicate "$_dotfile" "$_dest"
     else
@@ -678,7 +679,7 @@ add_dotfiles() {
 
 get_submodules_path() {
   # shellcheck disable=SC2016
-  git -C "${SDOTIT_PATH}" submodule -q foreach 'echo $sm_path'
+  git -C "${DOTIG_PATH}" submodule -q foreach 'echo $sm_path'
 }
 
 find_cmd() {
@@ -689,10 +690,10 @@ find_cmd() {
 
   _exclude_dirs+=('.git')
 
-  _find_cmd=( find "$SDOTIT_PATH" -mindepth 2 \( -type f -o -type l \) )
+  _find_cmd=( find "$DOTIG_PATH" -mindepth 2 \( -type f -o -type l \) )
 
   for _exclude_dir in "${_exclude_dirs[@]}"; do
-    _find_cmd+=( -not \( -path "$SDOTIT_PATH/${_exclude_dir}/*" -prune \) )
+    _find_cmd+=( -not \( -path "$DOTIG_PATH/${_exclude_dir}/*" -prune \) )
   done
   _find_cmd+=( -print0 )
 
@@ -734,7 +735,7 @@ handle_update_target() {
   done
 }
 
-target_in_sdotit_dir() {
+target_in_dotig_dir() {
   [ $# -ne 3 ] && error_callback
 
   local _file=$1
@@ -757,18 +758,18 @@ update_symlinks() {
   echo -e "\nCreating symlink..."
 
   while IFS= read -r -d '' file <&3; do
-    if [ -h "$HOME${file#$SDOTIT_PATH/home}" ]; then
-      _symlink="$HOME${file#$SDOTIT_PATH/home}"
+    if [ -h "$HOME${file#$DOTIG_PATH/home}" ]; then
+      _symlink="$HOME${file#$DOTIG_PATH/home}"
       _symlink_target=$(readlink -f "$_symlink")
       case $_symlink_target in
-        $SDOTIT_PATH/*) target_in_sdotit_dir "$file" "$_symlink" "$_symlink_target" ;;
+        $DOTIG_PATH/*) target_in_dotig_dir "$file" "$_symlink" "$_symlink_target" ;;
         *) handle_update_target "$file" "$_symlink" "$_symlink_target" ;;
       esac
-    elif [ -f "$HOME${file#$SDOTIT_PATH/home}" ]; then
+    elif [ -f "$HOME${file#$DOTIG_PATH/home}" ]; then
       echo
-      handle_duplicate "$HOME${file#$SDOTIT_PATH/home}" "$file"
+      handle_duplicate "$HOME${file#$DOTIG_PATH/home}" "$file"
     else
-      ln -s "$file" "$HOME/${file#$SDOTIT_PATH/home}"
+      ln -s "$file" "$HOME/${file#$DOTIG_PATH/home}"
       echo "${_success_color}Success:${_no_color} Symlink created for $file"
     fi
   done 3< <(find_cmd)
@@ -828,8 +829,8 @@ remove_symlinks() {
   while IFS= read -r -d '' symlink <&3; do
     _symlink_target=$(readlink "$symlink")
     case $_symlink_target in
-      $SDOTIT_PATH/*)
-        _expected_target="${SDOTIT_PATH}/home${symlink#$HOME}"
+      $DOTIG_PATH/*)
+        _expected_target="${DOTIG_PATH}/home${symlink#$HOME}"
         if [ "$_expected_target" = "$_symlink_target" ]; then
           replace_symlink_with_file "$symlink" "$_expected_target"
         else
@@ -838,7 +839,7 @@ remove_symlinks() {
         ;;
       *) ;;
     esac
-  done 3< <(find "$HOME" -type l -not \( -path "$SDOTIT_PATH/*" -prune \) -print0)
+  done 3< <(find "$HOME" -type l -not \( -path "$DOTIG_PATH/*" -prune \) -print0)
 
   echo -e "\n${_success_color}Success:${_no_color} Done. Symlinks have been replaced except those that have possibly been manually skipped.\n"
 
@@ -852,12 +853,12 @@ remove_symlinks() {
 commit_changes() {
   local _staged_files
 
-  git -C "${SDOTIT_PATH}" add --all
+  git -C "${DOTIG_PATH}" add --all
   _staged_files=$(get_staged_files_count) || true
 
   if [ "$_staged_files" -ne 0 ]; then
     echo
-    git -C "${SDOTIT_PATH}" commit
+    git -C "${DOTIG_PATH}" commit
     echo -e "${_success_color}Success:${_no_color} Changes committed!\n"
   else
     echo -e "\nCommit is not necessary, no staged files.\n"
@@ -871,9 +872,9 @@ get_unpushed_commits() {
   local _upstream_branch
 
   _current_branch=$(get_current_branch)
-  _upstream_branch=$(git -C "${SDOTIT_PATH}" config branch."${_current_branch}".remote)
+  _upstream_branch=$(git -C "${DOTIG_PATH}" config branch."${_current_branch}".remote)
 
-  git -C "${SDOTIT_PATH}" log --oneline "$_upstream_branch"/"$_current_branch"..HEAD
+  git -C "${DOTIG_PATH}" log --oneline "$_upstream_branch"/"$_current_branch"..HEAD
 }
 
 push_changes() {
@@ -881,7 +882,7 @@ push_changes() {
   _unpushed_commits_count=$(get_unpushed_commits | wc -l)
 
   if [ "$_unpushed_commits_count" -ne 0 ]; then
-    git -C "${SDOTIT_PATH}" push
+    git -C "${DOTIG_PATH}" push
     echo -e "\n${_success_color}Success:${_no_color} Commit(s) pushed!\n"
   else
     echo -e "\nNothing to push.\n"
@@ -895,10 +896,10 @@ pull_changes() {
 
   if ! is_repo_up_to_date && is_pull_needed; then
     if ! is_repo_dirty; then
-      git -C "${SDOTIT_PATH}" pull --rebase
+      git -C "${DOTIG_PATH}" pull --rebase
       echo -e "\n${_success_color}Success:${_no_color} Repo is now up-to-date!\n"
     else
-      echo -e "\n${_warning_color}Warning:${_no_color} Sdotit cannot pull. Your repo is dirty."
+      echo -e "\n${_warning_color}Warning:${_no_color} Dotig cannot pull. Your repo is dirty."
       echo "See the details below."
       get_expanded_status
       echo -e "Commit or stash (manually) your changes if you want to pull.\n"
@@ -938,8 +939,8 @@ print_menu_options() {
   echo "${_choice_color}[4]${_no_color} Push changes to remote"
   echo "${_choice_color}[5]${_no_color} Pull changes from remote"
   echo "${_choice_color}[6]${_no_color} Remove all symlinks"
-  echo "${_choice_color}[7]${_no_color} Check for Sdotit update"
-  echo "${_choice_color}[8]${_no_color} Print Sdotit version"
+  echo "${_choice_color}[7]${_no_color} Check for Dotig update"
+  echo "${_choice_color}[8]${_no_color} Print Dotig version"
   echo "${_choice_color}[q]${_no_color} Exit"
 }
 
@@ -957,7 +958,7 @@ print_menu() {
     4) push_changes ;;
     5) pull_changes ;;
     6) remove_symlinks ;;
-    7) check_sdotit_updates ;;
+    7) check_dotig_updates ;;
     8) print_version ;;
     [qQ]) exit ;;
     *) echo -e "\n${_error_color}Error:${_no_color} Invalid choice. Try again." ;;
