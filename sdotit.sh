@@ -890,6 +890,26 @@ push_changes() {
   return_menu
 }
 
+pull_changes() {
+  update_remote_tracking
+
+  if ! is_repo_up_to_date && is_pull_needed; then
+    if ! is_repo_dirty; then
+      git -C "${SDOTIT_PATH}" pull --rebase
+      echo -e "\n${_success_color}Success:${_no_color} Repo is now up-to-date!\n"
+    else
+      echo -e "\n${_warning_color}Warning:${_no_color} Sdotit cannot pull. Your repo is dirty."
+      echo "See the details below."
+      get_expanded_status
+      echo -e "Commit or stash (manually) your changes if you want to pull.\n"
+    fi
+  else
+    echo -e "\nNothing to pull.\n"
+  fi
+
+  return_menu
+}
+
 ###############################################################################
 # Menu
 ###############################################################################
@@ -935,7 +955,7 @@ print_menu() {
     2) update_symlinks ;;
     3) commit_changes ;;
     4) push_changes ;;
-    5) ;;
+    5) pull_changes ;;
     6) remove_symlinks ;;
     7) check_sdotit_updates ;;
     8) print_version ;;
