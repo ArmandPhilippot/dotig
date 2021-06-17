@@ -747,6 +747,53 @@ remove_symlinks() {
 }
 
 ###############################################################################
+# Git options
+###############################################################################
+
+commit_changes() {
+  local _staged_files
+
+  git -C "${SDOTIT_PATH}" add --all
+  _staged_files=$(git -C "$SDOTIT_PATH" status --porcelain | grep -c "^A") || true
+
+  if [ "$_staged_files" -ne 0 ]; then
+    echo
+    git -C "${SDOTIT_PATH}" commit
+    echo -e "${_success_color}Success:${_no_color} Changes committed!\n"
+  else
+    echo -e "\nCommit is not necessary, no staged files.\n"
+  fi
+
+  return_menu
+}
+
+get_unpushed_commits() {
+  local _current_branch
+  local _upstream_branch
+
+  _current_branch=$(get_current_branch)
+  _upstream_branch=$(git -C "${SDOTIT_PATH}" config branch."${_current_branch}".remote)
+
+  git -C "${SDOTIT_PATH}" log --oneline "$_upstream_branch"/"$_current_branch"..HEAD
+}
+
+push_changes() {
+  local _unpushed_commits_count
+
+  _unpushed_commits_count=$(get_unpushed_commits | wc -l)
+  echo
+
+  if [ "$_unpushed_commits_count" -ne 0 ]; then
+    git -C "${SDOTIT_PATH}" push
+    echo -e "${_success_color}Success:${_no_color} Commit(s) pushed!\n"
+  else
+    echo -e "Nothing to push. \n"
+  fi
+
+  return_menu
+}
+
+###############################################################################
 # Menu
 ###############################################################################
 
@@ -789,8 +836,8 @@ print_menu() {
     case $_choice in
     1) add_dotfiles ;;
     2) update_symlinks ;;
-    3) ;;
-    4) ;;
+    3) commit_changes ;;
+    4) push_changes ;;
     5) ;;
     6) remove_symlinks ;;
     7) check_sdotit_updates ;;
