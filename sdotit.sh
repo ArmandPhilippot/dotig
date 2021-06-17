@@ -379,39 +379,81 @@ check_dotfiles_repo() {
 # Repo Status
 ###############################################################################
 
+update_remote_tracking() {
+  git -C "$SDOTIT_PATH" fetch
+}
+
+get_local_commit() {
+  git -C "$SDOTIT_PATH" rev-parse HEAD
+}
+
+get_remote_commit() {
+  git -C "$SDOTIT_PATH" rev-parse FETCH_HEAD
+}
+
+get_common_ancestor() {
+  local _remote_commit
+  _remote_commit=$(get_remote_commit)
+
+  git -C "$SDOTIT_PATH" merge-base HEAD "$_remote_commit"
+}
+
+is_repo_up_to_date() {
+  local _local_commit
+  local _remote_commit
+  _local_commit=$(get_local_commit)
+  _remote_commit=$(get_remote_commit)
+
+  [ "$_local_commit" = "$_remote_commit" ]
+}
+
+is_pull_needed() {
+  local _local_commit
+  local _common_ancestor
+  _local_commit=$(get_local_commit)
+  _common_ancestor=$(get_common_ancestor)
+
+  [ "$_local_commit" = "$_common_ancestor" ]
+}
+
+is_push_needed() {
+  local _remote_commit
+  local _common_ancestor
+  _remote_commit=$(get_remote_commit)
+  _common_ancestor=$(get_common_ancestor)
+
+  [ "$_remote_commit" = "$_common_ancestor" ]
+}
+
+get_dirty_files_count() {
+  git -C "$SDOTIT_PATH" status --porcelain | wc -l
+}
+
 is_repo_dirty() {
-  local _dirty_files
+  local _dirty_files_count
+  _dirty_files_count=$(get_dirty_files_count)
 
-  _dirty_files=$(git -C "$SDOTIT_PATH" status --porcelain | wc -l)
+  [ "$_dirty_files_count" -ne 0 ]
+}
 
-  if [ "$_dirty_files" -ne 0 ]; then
+get_repo_status() {
+  echo -e "\nChecking status..."
+  echo "Your SSH passphrase can be requested."
+  update_remote_tracking
+
+  if is_repo_up_to_date; then
+    echo -e "Status: ${_success_color}up-to-date!${_no_color}"
+  else
+    is_pull_needed && echo -e "Status: ${_warning_color}pull needed!${_no_color}"
+    is_push_needed && echo -e "Status: ${_warning_color}push needed!${_no_color}"
+  fi
+
+  if is_repo_dirty; then
     echo -e "Status: ${_warning_color}dirty repo!${_no_color}"
   else
     echo -e "Status: ${_success_color}clean repo!${_no_color}"
   fi
-}
 
-get_repo_status() {
-  local _local_commit
-  local _remote_commit
-  local _common_ancestor
-
-  echo -e "\nChecking status..."
-  echo "Your SSH passphrase can be requested."
-  git -C "$SDOTIT_PATH" fetch
-
-  _local_commit=$(git -C "$SDOTIT_PATH" rev-parse HEAD)
-  _remote_commit=$(git -C "$SDOTIT_PATH" rev-parse FETCH_HEAD)
-  _common_ancestor=$(git -C "$SDOTIT_PATH" merge-base HEAD "$_remote_commit")
-
-  if [ "$_local_commit" = "$_remote_commit" ]; then
-    echo -e "Status: ${_success_color}up-to-date!${_no_color}"
-  else
-    [ "$_local_commit" = "$_common_ancestor" ] && echo -e "Status: ${_warning_color}pull needed!${_no_color}"
-    [ "$_remote_commit" = "$_common_ancestor" ] && echo -e "Status: ${_warning_color}push needed!${_no_color}"
-  fi
-
-  is_repo_dirty
   echo
 }
 
@@ -779,15 +821,13 @@ get_unpushed_commits() {
 
 push_changes() {
   local _unpushed_commits_count
-
   _unpushed_commits_count=$(get_unpushed_commits | wc -l)
-  echo
 
   if [ "$_unpushed_commits_count" -ne 0 ]; then
     git -C "${SDOTIT_PATH}" push
-    echo -e "${_success_color}Success:${_no_color} Commit(s) pushed!\n"
+    echo -e "\n${_success_color}Success:${_no_color} Commit(s) pushed!\n"
   else
-    echo -e "Nothing to push. \n"
+    echo -e "\nNothing to push.\n"
   fi
 
   return_menu
