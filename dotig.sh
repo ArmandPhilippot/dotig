@@ -385,43 +385,37 @@ update_remote_tracking() {
 }
 
 get_local_commit() {
-  git -C "$DOTIG_PATH" rev-parse HEAD
+  git -C "$DOTIG_PATH" rev-parse --verify -q HEAD
 }
 
 get_remote_commit() {
-  git -C "$DOTIG_PATH" rev-parse FETCH_HEAD
+  git -C "$DOTIG_PATH" rev-parse --verify -q FETCH_HEAD
 }
 
 get_common_ancestor() {
-  local _remote_commit
-  _remote_commit=$(get_remote_commit)
+  local _local_commit=$1
+  local _remote_commit=$2
 
-  git -C "$DOTIG_PATH" merge-base HEAD "$_remote_commit"
+  [ "$_local_commit" ] &&  git -C "$DOTIG_PATH" merge-base HEAD "$_remote_commit"
 }
 
 is_repo_up_to_date() {
-  local _local_commit
-  local _remote_commit
-  _local_commit=$(get_local_commit)
-  _remote_commit=$(get_remote_commit)
+  local _local_commit=$1
+  local _remote_commit=$2
 
   [ "$_local_commit" = "$_remote_commit" ]
 }
 
 is_pull_needed() {
-  local _local_commit
-  local _common_ancestor
-  _local_commit=$(get_local_commit)
-  _common_ancestor=$(get_common_ancestor)
+  local _local_commit=$1
+  local _common_ancestor=$2
 
   [ "$_local_commit" = "$_common_ancestor" ]
 }
 
 is_push_needed() {
-  local _remote_commit
-  local _common_ancestor
-  _remote_commit=$(get_remote_commit)
-  _common_ancestor=$(get_common_ancestor)
+  local _remote_commit=$1
+  local _common_ancestor=$2
 
   [ "$_remote_commit" = "$_common_ancestor" ]
 }
@@ -496,15 +490,23 @@ get_expanded_status() {
 }
 
 get_repo_status() {
+  local _local_commit
+  local _remote_commit
+  local _common_ancestor
+  _local_commit=$(get_local_commit) || true
+  _remote_commit=$(get_remote_commit) || true
+  _common_ancestor=$(get_common_ancestor "$_local_commit" "$_remote_commit") || true
+  echo "WTF"
+
   echo -e "\nChecking status..."
   echo "Your SSH passphrase can be requested."
   update_remote_tracking
 
-  if is_repo_up_to_date; then
+  if is_repo_up_to_date "$_local_commit" "$_remote_commit"; then
     echo -e "Status: ${_success_color}up-to-date!${_no_color}"
   else
-    is_pull_needed && echo -e "Status: ${_warning_color}pull needed!${_no_color}"
-    is_push_needed && echo -e "Status: ${_warning_color}push needed!${_no_color}"
+    is_pull_needed "$_local_commit" "$_common_ancestor" && echo -e "Status: ${_warning_color}pull needed!${_no_color}"
+    is_push_needed "$_remote_commit" "$_common_ancestor" && echo -e "Status: ${_warning_color}push needed!${_no_color}"
   fi
 
   if is_repo_dirty; then
@@ -892,9 +894,17 @@ push_changes() {
 }
 
 pull_changes() {
+  local _local_commit
+  local _remote_commit
+  local _common_ancestor
+
   update_remote_tracking
 
-  if ! is_repo_up_to_date && is_pull_needed; then
+  _local_commit=$(get_local_commit) || true
+  _remote_commit=$(get_remote_commit) || true
+  _common_ancestor=$(get_common_ancestor "$_local_commit" "$_remote_commit") || true
+
+  if ! is_repo_up_to_date "$_local_commit" "$_remote_commit" && is_pull_needed "$_local_commit" "$_common_ancestor"; then
     if ! is_repo_dirty; then
       git -C "${DOTIG_PATH}" pull --rebase
       echo -e "\n${_success_color}Success:${_no_color} Repo is now up-to-date!\n"
