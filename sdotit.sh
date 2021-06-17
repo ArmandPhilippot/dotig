@@ -441,7 +441,7 @@ get_untracked_files_count() {
 }
 
 get_staged_files_count() {
-  git -C "$SDOTIT_PATH" status --porcelain | grep -c "^A"
+  git -C "$SDOTIT_PATH" status --porcelain | grep -c "^[A|M]"
 }
 
 get_deleted_files_count() {
@@ -853,7 +853,7 @@ commit_changes() {
   local _staged_files
 
   git -C "${SDOTIT_PATH}" add --all
-  _staged_files=$(git -C "$SDOTIT_PATH" status --porcelain | grep -c "^A") || true
+  _staged_files=$(get_staged_files_count) || true
 
   if [ "$_staged_files" -ne 0 ]; then
     echo
