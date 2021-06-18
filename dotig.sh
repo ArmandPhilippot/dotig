@@ -106,6 +106,114 @@ is_correct_path() {
 }
 
 ###############################################################################
+# Git Helpers
+# Used to init Git, check repo status and to commit, push & pull (Git options)
+###############################################################################
+
+get_current_branch() {
+  git -C "${DOTIG_PATH}" symbolic-ref --quiet --short HEAD
+}
+
+get_branch_upstream() {
+  local _git_branch
+  _git_branch=$(get_current_branch)
+  git -C "${DOTIG_PATH}" config branch."${_git_branch}".remote &> /dev/null
+}
+
+get_existing_remotes() {
+  git -C "${DOTIG_PATH}" remote
+}
+
+update_remote_tracking() {
+  git -C "$DOTIG_PATH" fetch
+}
+
+get_local_commit() {
+  git -C "$DOTIG_PATH" rev-parse --verify -q HEAD
+}
+
+get_remote_commit() {
+  git -C "$DOTIG_PATH" rev-parse --verify -q FETCH_HEAD
+}
+
+get_common_ancestor() {
+  local _local_commit=$1
+  local _remote_commit=$2
+
+  [ "$_local_commit" ] &&  git -C "$DOTIG_PATH" merge-base HEAD "$_remote_commit"
+}
+
+is_repo_up_to_date() {
+  local _local_commit=$1
+  local _remote_commit=$2
+
+  [ "$_local_commit" = "$_remote_commit" ]
+}
+
+is_pull_needed() {
+  local _local_commit=$1
+  local _common_ancestor=$2
+
+  [ "$_local_commit" = "$_common_ancestor" ]
+}
+
+is_push_needed() {
+  local _remote_commit=$1
+  local _common_ancestor=$2
+
+  [ "$_remote_commit" = "$_common_ancestor" ]
+}
+
+get_dirty_files_count() {
+  git -C "$DOTIG_PATH" status --porcelain | wc -l
+}
+
+is_repo_dirty() {
+  local _dirty_files_count
+  _dirty_files_count=$(get_dirty_files_count)
+
+  [ "$_dirty_files_count" -ne 0 ]
+}
+
+get_untracked_files_count() {
+  git -C "$DOTIG_PATH" status --porcelain | grep -c "^??"
+}
+
+get_staged_files_count() {
+  git -C "$DOTIG_PATH" status --porcelain | grep -c "^[A|M]"
+}
+
+get_deleted_files_count() {
+  git -C "$DOTIG_PATH" status --porcelain | grep -c "^.D"
+}
+
+get_renamed_files_count() {
+  git -C "$DOTIG_PATH" status --porcelain | grep -c "^R"
+}
+
+get_modified_files_count() {
+  git -C "$DOTIG_PATH" status --porcelain | grep -c "^.M"
+}
+
+get_unmerged_files_count() {
+  git -C "$DOTIG_PATH" ls-files --unmerged | wc -l
+}
+
+get_stashed_files_count() {
+  git -C "$DOTIG_PATH" stash list | wc -l
+}
+
+get_unpushed_commits() {
+  local _current_branch
+  local _upstream_branch
+
+  _current_branch=$(get_current_branch)
+  _upstream_branch=$(git -C "${DOTIG_PATH}" config branch."${_current_branch}".remote)
+
+  git -C "${DOTIG_PATH}" log --oneline "$_upstream_branch"/"$_current_branch"..HEAD
+}
+
+###############################################################################
 # Safety Checks
 ###############################################################################
 
@@ -198,20 +306,6 @@ is_dotfiles_dir_set() {
   fi
 
   eval "$1=$_dotfiles_path"
-}
-
-get_current_branch() {
-  git -C "${DOTIG_PATH}" symbolic-ref --quiet --short HEAD
-}
-
-get_branch_upstream() {
-  local _git_branch
-  _git_branch=$(get_current_branch)
-  git -C "${DOTIG_PATH}" config branch."${_git_branch}".remote &> /dev/null
-}
-
-get_existing_remotes() {
-  git -C "${DOTIG_PATH}" remote
 }
 
 is_valid_remote_name() {
@@ -372,85 +466,6 @@ check_dotfiles_repo() {
 ###############################################################################
 # Repo Status
 ###############################################################################
-
-update_remote_tracking() {
-  git -C "$DOTIG_PATH" fetch
-}
-
-get_local_commit() {
-  git -C "$DOTIG_PATH" rev-parse --verify -q HEAD
-}
-
-get_remote_commit() {
-  git -C "$DOTIG_PATH" rev-parse --verify -q FETCH_HEAD
-}
-
-get_common_ancestor() {
-  local _local_commit=$1
-  local _remote_commit=$2
-
-  [ "$_local_commit" ] &&  git -C "$DOTIG_PATH" merge-base HEAD "$_remote_commit"
-}
-
-is_repo_up_to_date() {
-  local _local_commit=$1
-  local _remote_commit=$2
-
-  [ "$_local_commit" = "$_remote_commit" ]
-}
-
-is_pull_needed() {
-  local _local_commit=$1
-  local _common_ancestor=$2
-
-  [ "$_local_commit" = "$_common_ancestor" ]
-}
-
-is_push_needed() {
-  local _remote_commit=$1
-  local _common_ancestor=$2
-
-  [ "$_remote_commit" = "$_common_ancestor" ]
-}
-
-get_dirty_files_count() {
-  git -C "$DOTIG_PATH" status --porcelain | wc -l
-}
-
-is_repo_dirty() {
-  local _dirty_files_count
-  _dirty_files_count=$(get_dirty_files_count)
-
-  [ "$_dirty_files_count" -ne 0 ]
-}
-
-get_untracked_files_count() {
-  git -C "$DOTIG_PATH" status --porcelain | grep -c "^??"
-}
-
-get_staged_files_count() {
-  git -C "$DOTIG_PATH" status --porcelain | grep -c "^[A|M]"
-}
-
-get_deleted_files_count() {
-  git -C "$DOTIG_PATH" status --porcelain | grep -c "^.D"
-}
-
-get_renamed_files_count() {
-  git -C "$DOTIG_PATH" status --porcelain | grep -c "^R"
-}
-
-get_modified_files_count() {
-  git -C "$DOTIG_PATH" status --porcelain | grep -c "^.M"
-}
-
-get_unmerged_files_count() {
-  git -C "$DOTIG_PATH" ls-files --unmerged | wc -l
-}
-
-get_stashed_files_count() {
-  git -C "$DOTIG_PATH" stash list | wc -l
-}
 
 get_expanded_status() {
   local _untracked_files_count
@@ -859,16 +874,6 @@ commit_changes() {
   fi
 
   return_menu
-}
-
-get_unpushed_commits() {
-  local _current_branch
-  local _upstream_branch
-
-  _current_branch=$(get_current_branch)
-  _upstream_branch=$(git -C "${DOTIG_PATH}" config branch."${_current_branch}".remote)
-
-  git -C "${DOTIG_PATH}" log --oneline "$_upstream_branch"/"$_current_branch"..HEAD
 }
 
 push_changes() {
