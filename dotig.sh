@@ -36,6 +36,9 @@
 
 set -e
 
+###############################################################################
+# Variables
+###############################################################################
 DOTIG_VERSION="0.1.0"
 DOTIG_LOGO=$(
   cat <<-EOF
@@ -52,7 +55,7 @@ EOF
 )
 DOTIG_PATH=""
 
-
+# Colors
 _error_color=$'\e[31m'
 _success_color=$'\e[32m'
 _warning_color=$'\e[33m'
@@ -215,6 +218,8 @@ get_unpushed_commits() {
 
 ###############################################################################
 # Safety Checks
+# Do not execute Dotig if operating system is not supported or if Git is not
+# installed.
 ###############################################################################
 
 is_linux() {
@@ -276,6 +281,7 @@ check_requirements() {
 
 ###############################################################################
 # Repo configuration
+# Check if $DOTFILES is defined and if it is a repo. If not, set both.
 ###############################################################################
 
 set_dotfiles_dir() {
@@ -465,6 +471,7 @@ check_dotfiles_repo() {
 
 ###############################################################################
 # Repo Status
+# Call git to obtain some info about the repo status and display these info.
 ###############################################################################
 
 get_expanded_status() {
@@ -526,6 +533,7 @@ get_repo_status() {
 
 ###############################################################################
 # Dotig options
+# Allow user to check current version of Dotig and to check for updates.
 ###############################################################################
 
 print_version() {
@@ -571,6 +579,7 @@ check_dotig_updates() {
 
 ###############################################################################
 # Symlinking options
+# Main feature of Dotig: handle backup of dotfiles and symlinking.
 ###############################################################################
 
 get_absolute_path() {
@@ -857,6 +866,7 @@ remove_symlinks() {
 
 ###############################################################################
 # Git options
+# Second feature of Dotig: handle commit, push and pull from the script.
 ###############################################################################
 
 commit_changes() {
@@ -920,6 +930,7 @@ pull_changes() {
 
 ###############################################################################
 # Menu
+# Display all possible options.
 ###############################################################################
 
 return_menu() {
@@ -975,6 +986,7 @@ print_menu() {
 
 ###############################################################################
 # Main
+# Entry point of Dotig.
 ###############################################################################
 
 main() {
