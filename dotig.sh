@@ -145,10 +145,6 @@ is_git_installed() {
   [ -x "$(command -v git)" ]
 }
 
-is_stow_installed() {
-  [ -x "$(command -v stow)" ]
-}
-
 check_commands() {
   echo -e "\nChecking installed programs..."
 
@@ -156,15 +152,6 @@ check_commands() {
     echo -e "${_success_color}Success:${_no_color} Git is installed."
   else
     echo -e "${_error_color}Error:${_no_color} Dotig needs Git to function properly."
-    echo -e "Please install it before using this program.\n"
-    echo "Exit."
-    exit 1
-  fi
-
-  if is_stow_installed; then
-    echo -e "${_success_color}Success:${_no_color} Stow is installed."
-  else
-    echo -e "${_error_color}Error:${_no_color} Dotig needs GNU Stow to function properly."
     echo -e "Please install it before using this program.\n"
     echo "Exit."
     exit 1
@@ -496,7 +483,6 @@ get_repo_status() {
   _local_commit=$(get_local_commit) || true
   _remote_commit=$(get_remote_commit) || true
   _common_ancestor=$(get_common_ancestor "$_local_commit" "$_remote_commit") || true
-  echo "WTF"
 
   echo -e "\nChecking status..."
   echo "Your SSH passphrase can be requested."
