@@ -247,11 +247,12 @@ ask_remote_name() {
 }
 
 set_branch_upstream() {
-  local _git_branch
+  local _local_branch
   local _git_remotes
   local _remote_name
+  local _remote_branch
 
-  _git_branch=$(get_current_branch)
+  _local_branch=$(get_current_branch)
   _git_remotes=$(get_existing_remotes)
 
   if [ "$(echo "$_git_remotes" | wc -l)" -gt 1 ]; then
@@ -260,7 +261,12 @@ set_branch_upstream() {
     _remote_name=$_git_remotes
   fi
 
-  git -C "${DOTIG_PATH}" config branch."${_git_branch}".remote "$_remote_name"
+  git -C "${DOTIG_PATH}" pull "$_remote_name" "$_local_branch"
+
+  _remote_branch=$(git -C "${DOTIG_PATH}" ls-remote --symref origin HEAD | head -1 | sed 's@ref: refs/heads/@@' | cut -f1)
+
+  git -C "${DOTIG_PATH}" fetch --set-upstream "$_remote_name" "$_remote_branch"
+
   echo "${_success_color}Success:${_no_color} Upstream set."
 }
 
