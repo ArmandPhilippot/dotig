@@ -1,0 +1,38 @@
+{
+  "name": "dotig",
+  "description": "A dotfiles manager using Git.",
+  "keywords": [
+    "dotfiles",
+    "git"
+  ],
+  "version": "0.1.0",
+  "license": "MIT",
+  "author": {
+    "name": "Armand Philippot",
+    "url": "https://www.armandphilippot.com"
+  },
+  "homepage": "https://github.com/ArmandPhilippot/dotig#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ArmandPhilippot/dotig.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ArmandPhilippot/dotig/issues"
+  },
+  "scripts": {
+    "bump": "replace-in-files --regex='DOTIG_VERSION=\"\\d+\\.\\d+\\.\\d+\"' --replacement=DOTIG_VERSION=\"$npm_package_version\" dotig.sh",
+    "release": "standard-version -a"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^12.1.4",
+    "@commitlint/config-conventional": "^12.1.4",
+    "husky": "^6.0.0",
+    "replace-in-files-cli": "^1.0.0",
+    "standard-version": "^9.3.0"
+  },
+  "standard-version": {
+		"scripts": {
+			"postbump": "npm run bump && git add -A"
+		}
+	}
+}
