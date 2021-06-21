@@ -508,13 +508,14 @@ get_repo_status() {
   local _local_commit
   local _remote_commit
   local _common_ancestor
-  _local_commit=$(get_local_commit) || true
-  _remote_commit=$(get_remote_commit) || true
-  _common_ancestor=$(get_common_ancestor "$_local_commit" "$_remote_commit") || true
 
   echo -e "\nChecking status..."
   echo "Your SSH passphrase can be requested."
   update_remote_tracking
+
+  _local_commit=$(get_local_commit) || true
+  _remote_commit=$(get_remote_commit) || true
+  _common_ancestor=$(get_common_ancestor "$_local_commit" "$_remote_commit") || true
 
   if is_repo_up_to_date "$_local_commit" "$_remote_commit"; then
     echo -e "Status: ${_success_color}up-to-date!${_no_color}"
