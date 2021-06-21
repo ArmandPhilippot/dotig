@@ -65,6 +65,7 @@ _no_color=$(printf '\e[0m')
 
 # Parameters
 _disable_menu="false"
+_show_repo_status="true"
 
 ###############################################################################
 # Helpers
@@ -1055,8 +1056,9 @@ dotig_help() {
   printf "remove, rm\tReplace all symlinks with the original file. This last will be conserved.\n"
   printf "\n"
   printf "OPTIONS\n"
-  printf -- "--help, -h\tPrint this help.\n"
-  printf -- "--version, -v\tPrint Dotig version and check for new releases.\n"
+  printf -- "--help, -h\t\tPrint this help.\n"
+  printf -- "--no-status, -ns\tDo not show the repo status. Can be useful to quickly launch Dotig.\n"
+  printf -- "--version, -v\t\tPrint Dotig version and check for new releases.\n"
 
   return_menu
 }
@@ -1066,7 +1068,7 @@ main() {
   check_requirements
   check_dotfiles_repo
   printf "\nWelcome!\n"
-  get_repo_status
+  [ $_show_repo_status = "true" ] && get_repo_status
   print_menu
 }
 
@@ -1089,6 +1091,11 @@ else
   pull) pull_changes ;;
   rm|remove) remove_symlinks ;;
   --help|-h) dotig_help ;;
+  --no-status|-ns)
+    _disable_menu="false"
+    _show_repo_status="false"
+    main
+    ;;
   --version|-v)
     print_version
     check_dotig_updates
