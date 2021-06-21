@@ -1061,6 +1061,9 @@ else
     add_dotfiles "$@"
     ;;
   update) update_symlinks ;;
+  commit) commit_changes ;;
+  push) push_changes ;;
+  pull) pull_changes ;;
   *) printf "Error\n";
   esac
 fi
