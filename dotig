@@ -1007,6 +1007,7 @@ print_menu_options() {
   printf "%s[6]%s Remove all symlinks\n" "$_choice_color" "$_no_color"
   printf "%s[7]%s Check for Dotig update\n" "$_choice_color" "$_no_color"
   printf "%s[8]%s Print Dotig version\n" "$_choice_color" "$_no_color"
+  printf "%s[9]%s Print Dotig help\n" "$_choice_color" "$_no_color"
   printf "%s[q]%s Exit\n" "$_choice_color" "$_no_color"
 }
 
@@ -1027,6 +1028,7 @@ print_menu() {
     6) remove_symlinks ;;
     7) check_dotig_updates ;;
     8) print_version ;;
+    9) dotig_help ;;
     [qQ]) exit ;;
     *) printf "\n%sError:%s Invalid choice. Try again.\n" "$_error_color" "$_no_color" ;;
     esac
@@ -1037,6 +1039,27 @@ print_menu() {
 # Main
 # Entry point of Dotig.
 ###############################################################################
+
+dotig_help() {
+  printf "\nUsage: dotig [command] [options] [<files>]\n"
+  printf "\n"
+  printf "Note: only \`dotig add\` accept [<files>].\n"
+  printf "\n"
+  printf "COMMANDS\n"
+  printf "add\t\tAdd new dotfiles to your backup directory and create symlinks.\n"
+  printf "\t\tAccept both absolute and relative paths.\n"
+  printf "update\t\tUpdate all symlinks.\n"
+  printf "commit\t\tUse Git to commit all changes.\n"
+  printf "push\t\tUse Git to push all changes.\n"
+  printf "pull\t\tUse Git to pull changes from remote.\n"
+  printf "remove, rm\tReplace all symlinks with the original file. This last will be conserved.\n"
+  printf "\n"
+  printf "OPTIONS\n"
+  printf -- "--help, -h\tPrint this help.\n"
+  printf -- "--version, -v\tPrint Dotig version and check for new releases.\n"
+
+  return_menu
+}
 
 main() {
   display_logo
@@ -1065,10 +1088,14 @@ else
   push) push_changes ;;
   pull) pull_changes ;;
   rm|remove) remove_symlinks ;;
-  --version)
+  --help|-h) dotig_help ;;
+  --version|-v)
     print_version
     check_dotig_updates
     ;;
-  *) printf "Error\n";
+  *)
+    printf "%sError:%s invalid usage.\n" "$_error_color" "$_no_color"
+    printf "Use \`dotig --help\` or \`dotig -h\` to display all accepted commands and options.\n"
+    ;;
   esac
 fi
