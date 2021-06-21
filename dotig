@@ -63,6 +63,9 @@ _choice_color=$(printf '\e[34m')
 _output_color=$(printf '\e[35m')
 _no_color=$(printf '\e[0m')
 
+# Parameters
+_disable_menu="false"
+
 ###############################################################################
 # Helpers
 ###############################################################################
@@ -615,11 +618,13 @@ print_diff() {
   local _home_dotfile=$1
   local _backup_dotfile=$2
   local _filename
-  local _column_width=$(("$COLUMNS" / 2))
+  local _column_width
   local _padding
   local _padding_lenght
   local _divider
 
+  [ ! $COLUMNS ] && COLUMNS=$(stty size | awk '{print $2}')
+  _column_width=$(("$COLUMNS" / 2))
   _filename=$(basename "$_home_dotfile")
   _padding=$(printf '%*s' "$COLUMNS" "")
   _padding_lenght=$((_column_width - ${#HOME}))
@@ -631,7 +636,7 @@ print_diff() {
     printf "\nThe two files are different. See the diff of %s:\n\n" "${_output_color}${_filename}${_no_color}"
     printf "%s%0.${_padding_lenght}s%s\n" "$HOME" "$_padding" "$DOTIG_PATH";
     printf "%s\n" "$_divider";
-    command diff --color -y --width=$COLUMNS -t --suppress-common-lines "$_home_dotfile" "$_backup_dotfile" || [ $? -eq 1 ]
+    command diff --color -y --width="$COLUMNS" -t --suppress-common-lines "$_home_dotfile" "$_backup_dotfile" || [ $? -eq 1 ]
   fi
 }
 
@@ -691,8 +696,12 @@ add_dotfiles() {
   local _dotfiles
   local _dest
 
-  printf "\nEnter the dotfiles names: "
-  read -r -e -a _dotfiles
+  if [ $# -eq 0 ]; then
+    printf "\nEnter the dotfiles names: "
+    read -r -e -a _dotfiles
+  else
+    _dotfiles=("$@")
+  fi
 
   for _dotfile in "${_dotfiles[@]}"; do
     get_absolute_path _dotfile
@@ -970,6 +979,8 @@ pull_changes() {
 ###############################################################################
 
 return_menu() {
+  [ $_disable_menu = "true" ] && return
+
   local _choice
 
   while true; do
@@ -996,6 +1007,7 @@ print_menu_options() {
   printf "%s[6]%s Remove all symlinks\n" "$_choice_color" "$_no_color"
   printf "%s[7]%s Check for Dotig update\n" "$_choice_color" "$_no_color"
   printf "%s[8]%s Print Dotig version\n" "$_choice_color" "$_no_color"
+  printf "%s[9]%s Print Dotig help\n" "$_choice_color" "$_no_color"
   printf "%s[q]%s Exit\n" "$_choice_color" "$_no_color"
 }
 
@@ -1016,6 +1028,7 @@ print_menu() {
     6) remove_symlinks ;;
     7) check_dotig_updates ;;
     8) print_version ;;
+    9) dotig_help ;;
     [qQ]) exit ;;
     *) printf "\n%sError:%s Invalid choice. Try again.\n" "$_error_color" "$_no_color" ;;
     esac
@@ -1027,6 +1040,27 @@ print_menu() {
 # Entry point of Dotig.
 ###############################################################################
 
+dotig_help() {
+  printf "\nUsage: dotig [command] [options] [<files>]\n"
+  printf "\n"
+  printf "Note: only \`dotig add\` accept [<files>].\n"
+  printf "\n"
+  printf "COMMANDS\n"
+  printf "add\t\tAdd new dotfiles to your backup directory and create symlinks.\n"
+  printf "\t\tAccept both absolute and relative paths.\n"
+  printf "update\t\tUpdate all symlinks.\n"
+  printf "commit\t\tUse Git to commit all changes.\n"
+  printf "push\t\tUse Git to push all changes.\n"
+  printf "pull\t\tUse Git to pull changes from remote.\n"
+  printf "remove, rm\tReplace all symlinks with the original file. This last will be conserved.\n"
+  printf "\n"
+  printf "OPTIONS\n"
+  printf -- "--help, -h\tPrint this help.\n"
+  printf -- "--version, -v\tPrint Dotig version and check for new releases.\n"
+
+  return_menu
+}
+
 main() {
   display_logo
   check_requirements
@@ -1036,4 +1070,32 @@ main() {
   print_menu
 }
 
-main "$@"
+if [ $# -eq 0 ]; then
+  main
+else
+  [ ! "$DOTFILES" ] && error_callback
+  [ ! -d "$DOTFILES" ] && error_callback
+  DOTIG_PATH="$DOTFILES"
+  _disable_menu="true"
+
+  case $1 in
+  add)
+    shift 1
+    add_dotfiles "$@"
+    ;;
+  update) update_symlinks ;;
+  commit) commit_changes ;;
+  push) push_changes ;;
+  pull) pull_changes ;;
+  rm|remove) remove_symlinks ;;
+  --help|-h) dotig_help ;;
+  --version|-v)
+    print_version
+    check_dotig_updates
+    ;;
+  *)
+    printf "%sError:%s invalid usage.\n" "$_error_color" "$_no_color"
+    printf "Use \`dotig --help\` or \`dotig -h\` to display all accepted commands and options.\n"
+    ;;
+  esac
+fi
