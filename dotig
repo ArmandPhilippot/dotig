@@ -979,7 +979,7 @@ pull_changes() {
 ###############################################################################
 
 return_menu() {
-  [ $_disable_menu = "true" ] && exit
+  [ $_disable_menu = "true" ] && return
 
   local _choice
 
@@ -1065,6 +1065,10 @@ else
   push) push_changes ;;
   pull) pull_changes ;;
   rm|remove) remove_symlinks ;;
+  --version)
+    print_version
+    check_dotig_updates
+    ;;
   *) printf "Error\n";
   esac
 fi
