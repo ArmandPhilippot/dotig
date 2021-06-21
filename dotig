@@ -63,6 +63,9 @@ _choice_color=$(printf '\e[34m')
 _output_color=$(printf '\e[35m')
 _no_color=$(printf '\e[0m')
 
+# Parameters
+_disable_menu="false"
+
 ###############################################################################
 # Helpers
 ###############################################################################
@@ -713,7 +716,7 @@ add_dotfiles() {
     fi
   done
 
-  [ $# -eq 0 ] && return_menu
+  return_menu
 }
 
 get_submodules_path() {
@@ -976,6 +979,8 @@ pull_changes() {
 ###############################################################################
 
 return_menu() {
+  [ $_disable_menu = "true" ] && exit
+
   local _choice
 
   while true; do
@@ -1048,11 +1053,14 @@ else
   [ ! "$DOTFILES" ] && error_callback
   [ ! -d "$DOTFILES" ] && error_callback
   DOTIG_PATH="$DOTFILES"
+  _disable_menu="true"
 
   case $1 in
   add)
     shift 1
     add_dotfiles "$@"
     ;;
+  update) update_symlinks ;;
+  *) printf "Error\n";
   esac
 fi
