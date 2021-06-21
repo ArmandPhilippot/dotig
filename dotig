@@ -1064,6 +1064,7 @@ else
   commit) commit_changes ;;
   push) push_changes ;;
   pull) pull_changes ;;
+  rm|remove) remove_symlinks ;;
   *) printf "Error\n";
   esac
 fi
