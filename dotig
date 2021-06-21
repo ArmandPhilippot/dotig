@@ -615,11 +615,13 @@ print_diff() {
   local _home_dotfile=$1
   local _backup_dotfile=$2
   local _filename
-  local _column_width=$(("$COLUMNS" / 2))
+  local _column_width
   local _padding
   local _padding_lenght
   local _divider
 
+  [ ! $COLUMNS ] && COLUMNS=$(stty size | awk '{print $2}')
+  _column_width=$(("$COLUMNS" / 2))
   _filename=$(basename "$_home_dotfile")
   _padding=$(printf '%*s' "$COLUMNS" "")
   _padding_lenght=$((_column_width - ${#HOME}))
@@ -631,7 +633,7 @@ print_diff() {
     printf "\nThe two files are different. See the diff of %s:\n\n" "${_output_color}${_filename}${_no_color}"
     printf "%s%0.${_padding_lenght}s%s\n" "$HOME" "$_padding" "$DOTIG_PATH";
     printf "%s\n" "$_divider";
-    command diff --color -y --width=$COLUMNS -t --suppress-common-lines "$_home_dotfile" "$_backup_dotfile" || [ $? -eq 1 ]
+    command diff --color -y --width="$COLUMNS" -t --suppress-common-lines "$_home_dotfile" "$_backup_dotfile" || [ $? -eq 1 ]
   fi
 }
 
@@ -691,8 +693,12 @@ add_dotfiles() {
   local _dotfiles
   local _dest
 
-  printf "\nEnter the dotfiles names: "
-  read -r -e -a _dotfiles
+  if [ $# -eq 0 ]; then
+    printf "\nEnter the dotfiles names: "
+    read -r -e -a _dotfiles
+  else
+    _dotfiles=("$@")
+  fi
 
   for _dotfile in "${_dotfiles[@]}"; do
     get_absolute_path _dotfile
@@ -707,7 +713,7 @@ add_dotfiles() {
     fi
   done
 
-  return_menu
+  [ $# -eq 0 ] && return_menu
 }
 
 get_submodules_path() {
@@ -1036,4 +1042,17 @@ main() {
   print_menu
 }
 
-main "$@"
+if [ $# -eq 0 ]; then
+  main
+else
+  [ ! "$DOTFILES" ] && error_callback
+  [ ! -d "$DOTFILES" ] && error_callback
+  DOTIG_PATH="$DOTFILES"
+
+  case $1 in
+  add)
+    shift 1
+    add_dotfiles "$@"
+    ;;
+  esac
+fi
