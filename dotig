@@ -1001,6 +1001,19 @@ pull_changes() {
   return_menu
 }
 
+update_all_submodules() {
+  printf "\nChecking for Git submodules...\n"
+  if has_submodules; then
+    printf "Updating Git submodules...\n"
+    update_submodules
+    printf "%sSuccess:%s All submodules have been updated.\n" "$_success_color" "$_no_color"
+  else
+    printf "No submodules found.\n"
+  fi
+
+  return_menu
+}
+
 ###############################################################################
 # Menu
 # Display all possible options.
@@ -1032,10 +1045,11 @@ print_menu_options() {
   printf "%s[3]%s Commit dotfiles changes\n" "$_choice_color" "$_no_color"
   printf "%s[4]%s Push changes to remote\n" "$_choice_color" "$_no_color"
   printf "%s[5]%s Pull changes from remote\n" "$_choice_color" "$_no_color"
-  printf "%s[6]%s Remove all symlinks\n" "$_choice_color" "$_no_color"
-  printf "%s[7]%s Check for Dotig update\n" "$_choice_color" "$_no_color"
-  printf "%s[8]%s Print Dotig version\n" "$_choice_color" "$_no_color"
-  printf "%s[9]%s Print Dotig help\n" "$_choice_color" "$_no_color"
+  printf "%s[6]%s Update all Git submodules\n" "$_choice_color" "$_no_color"
+  printf "%s[7]%s Remove all symlinks\n" "$_choice_color" "$_no_color"
+  printf "%s[8]%s Check for Dotig update\n" "$_choice_color" "$_no_color"
+  printf "%s[9]%s Print Dotig version\n" "$_choice_color" "$_no_color"
+  printf "%s[10]%s Print Dotig help\n" "$_choice_color" "$_no_color"
   printf "%s[q]%s Exit\n" "$_choice_color" "$_no_color"
 }
 
@@ -1053,10 +1067,11 @@ print_menu() {
     3) commit_changes ;;
     4) push_changes ;;
     5) pull_changes ;;
-    6) remove_symlinks ;;
-    7) check_dotig_updates ;;
-    8) print_version ;;
-    9) dotig_help ;;
+    6) update_all_submodules ;;
+    7) remove_symlinks ;;
+    8) check_dotig_updates ;;
+    9) print_version ;;
+    10) dotig_help ;;
     [qQ]) exit ;;
     *) printf "\n%sError:%s Invalid choice. Try again.\n" "$_error_color" "$_no_color" ;;
     esac
@@ -1080,6 +1095,7 @@ dotig_help() {
   printf "commit\t\tUse Git to commit all changes.\n"
   printf "push\t\tUse Git to push all changes.\n"
   printf "pull\t\tUse Git to pull changes from remote.\n"
+  printf "submodule\tUpdate Git submodules.\n"
   printf "remove, rm\tReplace all symlinks with the original file. This last will be conserved.\n"
   printf "\n"
   printf "OPTIONS\n"
@@ -1116,6 +1132,7 @@ else
   commit) commit_changes ;;
   push) push_changes ;;
   pull) pull_changes ;;
+  submodule) update_all_submodules ;;
   rm|remove) remove_symlinks ;;
   --help|-h) dotig_help ;;
   --no-status|-ns)
