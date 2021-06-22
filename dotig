@@ -830,6 +830,32 @@ target_in_dotig_dir() {
   fi
 }
 
+get_broken_symlinks() {
+  find "$HOME" -type l -not \( -path "$DOTIG_PATH/*" -prune \) -ilname "$DOTIG_PATH*" ! -exec test -e {} \; -print
+}
+
+remove_broken_symlinks() {
+  local _tmp
+
+  printf "\nChecking for broken symlinks...\n"
+
+  _tmp=$(mktemp "${TMPDIR:-/tmp}/dotig.XXXXXX")
+  get_broken_symlinks > "$_tmp"
+
+  if [ -s "$_tmp" ]; then
+    while IFS= read -r file <&3; do
+      rm "$file"
+      printf "%sSuccess:%s %s removed...\n" "$_success_color" "$_no_color" "$file"
+    done 3< "$_tmp"
+
+    printf "%sSuccess:%s All broken symlinks removed...\n" "$_success_color" "$_no_color"
+  else
+    printf "No broken symlinks found.\n"
+  fi
+
+  rm "$_tmp"
+}
+
 update_symlinks() {
   local _symlink
   local _symlink_target
@@ -859,6 +885,8 @@ update_symlinks() {
   rm "$_tmp"
 
   printf "\n%sSuccess:%s Done. Symlinks have been updated except those that have possibly been manually skipped.\n" "$_success_color" "$_no_color"
+
+  remove_broken_symlinks
 
   return_menu
 }
