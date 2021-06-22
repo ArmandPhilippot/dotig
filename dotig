@@ -224,6 +224,24 @@ get_unpushed_commits() {
   git -C "$DOTIG_PATH" log --oneline "$_upstream_branch"/"$_current_branch"..HEAD
 }
 
+has_submodules() {
+  local _tmp
+  local _submodules
+
+  _tmp=$(mktemp "${TMPDIR:-/tmp}/dotig.XXXXXX")
+  git -C "$DOTIG_PATH" submodule status > "$_tmp"
+
+  while IFS='' read -r line; do _submodules+=("$line"); done < "$_tmp"
+
+  rm "$_tmp"
+
+  [ "${#_submodules[@]}" -gt 0 ]
+}
+
+update_submodules() {
+  git -C "$DOTIG_PATH" submodule update --init --recursive
+}
+
 ###############################################################################
 # Safety Checks
 # Do not execute Dotig if operating system is not supported or if Git is not
@@ -439,11 +457,20 @@ is_remote_set() {
   fi
 }
 
+init_submodules() {
+  if has_submodules; then
+    printf "Init submodules...\n"
+    update_submodules
+    printf "%sSuccess:%s All submodules have been initialized and updated.\n" "$_success_color" "$_no_color"
+  fi
+}
+
 init_git() {
   git -C "$DOTIG_PATH" init
   printf "\n"
   set_remote
   set_branch_upstream
+  init_submodules
 }
 
 is_git_repo() {
