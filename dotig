@@ -732,6 +732,7 @@ add_dotfiles() {
   fi
 
   for _dotfile in "${_dotfiles[@]}"; do
+    [ ! -e "$_dotfile" ] && printf "%sError:%s %s is not a file.\n" "$_error_color" "$_no_color" "$_dotfile" && exit 2
     get_absolute_path _dotfile
     _dest="$DOTIG_PATH/home${_dotfile#$HOME}"
     if [ -f "$_dest" ]; then
