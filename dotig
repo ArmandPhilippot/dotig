@@ -731,10 +731,22 @@ get_absolute_path() {
   local _absolute_path
 
   case $_file in
-  /*) _absolute_path=$_file;;
-  \~/*) _absolute_path="$HOME/${_file:2}" ;;
-  ./*) _absolute_path="$(pwd)/${_file:2}" ;;
-  *) _absolute_path="$(pwd)/$_file" ;;
+  /*)
+    [ ! -e "$_file" ] && printf "%sError:%s %s is not a file.\n" "$_error_color" "$_no_color" "$_file" && exit 2
+    _absolute_path=$_file
+    ;;
+  \~/*)
+    _absolute_path="$HOME/${_file:2}"
+    [ ! -e "$_absolute_path" ] && printf "%sError:%s %s is not a file.\n" "$_error_color" "$_no_color" "$_absolute_path" && exit 2
+    ;;
+  ./*)
+    _absolute_path="$(pwd)/${_file:2}"
+    [ ! -e "$_absolute_path" ] && printf "%sError:%s %s is not a file.\n" "$_error_color" "$_no_color" "$_absolute_path" && exit 2
+    ;;
+  *)
+    [ ! -e "$_file" ] && printf "%sError:%s %s is not a file.\n" "$_error_color" "$_no_color" "$_file" && exit 2
+    _absolute_path="$(pwd)/$_file"
+    ;;
   esac
 
   eval "$1=$_absolute_path"
@@ -838,7 +850,6 @@ add_dotfiles() {
   fi
 
   for _dotfile in "${_dotfiles[@]}"; do
-    [ ! -e "$_dotfile" ] && printf "%sError:%s %s is not a file.\n" "$_error_color" "$_no_color" "$_dotfile" && exit 2
     get_absolute_path _dotfile
     _dest="$DOTIG_PATH/home${_dotfile#$HOME}"
     if [ -f "$_dest" ]; then
