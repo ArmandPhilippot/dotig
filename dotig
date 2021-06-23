@@ -37,8 +37,9 @@
 set -e
 
 ###############################################################################
-# Variables
+# Global variables
 ###############################################################################
+# Dotig info
 DOTIG_VERSION="0.1.0"
 DOTIG_LOGO=$(
   cat <<-EOF
@@ -69,17 +70,22 @@ _show_repo_status="true"
 
 ###############################################################################
 # Helpers
+# Various helpers used across the script in different locations.
 ###############################################################################
 
+# Print Dotig logo
 display_logo() {
   printf "%s\n\n" "$DOTIG_LOGO"
 }
 
+# Exit the script in case of an unplanned scenario.
 error_callback() {
   printf "%sAn unexpected error occurred.%s Exit.\n" "$_error_color" "$_no_color"
   exit 1
 }
 
+# Prompt user to define an existing directory path.
+# Return the entered path.
 set_path() {
   local _path
   printf "Set the path: " >&2
@@ -93,6 +99,9 @@ set_path() {
   eval "$1=$_path"
 }
 
+# Ask user if the provided path is correct, if not define new path.
+# 1 argument is expected: the path to test.
+# Return the path (the new one or preserve the previous one).
 is_correct_path() {
   [ $# -ne 1 ] && error_callback
 
@@ -118,35 +127,42 @@ is_correct_path() {
 
 ###############################################################################
 # Git Helpers
-# Used to init Git, check repo status and to commit, push & pull (Git options)
+# Git specific helpers used in different locations across the script.
 ###############################################################################
 
+# Return the name of the branch on which the working tree is on.
 get_current_branch() {
   git -C "$DOTIG_PATH" symbolic-ref --quiet --short HEAD
 }
 
+# Return the name of the default/main upstream branch.
 get_branch_upstream() {
   local _git_branch
   _git_branch=$(get_current_branch)
   git -C "$DOTIG_PATH" config branch."$_git_branch".remote > /dev/null 2>&1
 }
 
+# Return a list of existing Git remotes.
 get_existing_remotes() {
   git -C "$DOTIG_PATH" remote
 }
 
+# Download objects and refs from remote.
 update_remote_tracking() {
   git -C "$DOTIG_PATH" fetch
 }
 
+# Return the object name of the current commit on the working tree.
 get_local_commit() {
   git -C "$DOTIG_PATH" rev-parse --verify -q HEAD
 }
 
+# Return the object name of the last commit on the remote.
 get_remote_commit() {
   git -C "$DOTIG_PATH" rev-parse --verify -q FETCH_HEAD
 }
 
+# Return a good common ancestor if the working tree has at least one commit.
 get_common_ancestor() {
   local _local_commit=$1
   local _remote_commit=$2
@@ -154,6 +170,7 @@ get_common_ancestor() {
   [ "$_local_commit" ] &&  git -C "$DOTIG_PATH" merge-base HEAD "$_remote_commit"
 }
 
+# Check if the current commit and the last commit on the remote are the same.
 is_repo_up_to_date() {
   local _local_commit=$1
   local _remote_commit=$2
@@ -161,6 +178,7 @@ is_repo_up_to_date() {
   [ "$_local_commit" = "$_remote_commit" ]
 }
 
+# Check if the remote is ahead the working tree.
 is_pull_needed() {
   local _local_commit=$1
   local _common_ancestor=$2
@@ -168,6 +186,7 @@ is_pull_needed() {
   [ "$_local_commit" = "$_common_ancestor" ]
 }
 
+# Check if the remote is behind the working tree.
 is_push_needed() {
   local _remote_commit=$1
   local _common_ancestor=$2
@@ -175,10 +194,12 @@ is_push_needed() {
   [ "$_remote_commit" = "$_common_ancestor" ]
 }
 
+# Return the number of changed files (modified, deleted...) on the working tree.
 get_dirty_files_count() {
   git -C "$DOTIG_PATH" status --porcelain | wc -l
 }
 
+# Check if the working tree has changed files.
 is_repo_dirty() {
   local _dirty_files_count
   _dirty_files_count=$(get_dirty_files_count)
@@ -186,34 +207,42 @@ is_repo_dirty() {
   [ "$_dirty_files_count" -ne 0 ]
 }
 
+# Return the number of untracked files.
 get_untracked_files_count() {
   git -C "$DOTIG_PATH" status --porcelain | grep -c "^??"
 }
 
+# Return the number of staged files.
 get_staged_files_count() {
   git -C "$DOTIG_PATH" status --porcelain | grep -c "^[A|M]"
 }
 
+# Return the number of deleted files.
 get_deleted_files_count() {
   git -C "$DOTIG_PATH" status --porcelain | grep -c "^.D"
 }
 
+# Return the number of renamed files.
 get_renamed_files_count() {
   git -C "$DOTIG_PATH" status --porcelain | grep -c "^R"
 }
 
+# Return the number of modified files.
 get_modified_files_count() {
   git -C "$DOTIG_PATH" status --porcelain | grep -c "^.M"
 }
 
+# Return the number of unmerged files.
 get_unmerged_files_count() {
   git -C "$DOTIG_PATH" ls-files --unmerged | wc -l
 }
 
+# Return the number of stash.
 get_stashed_files_count() {
   git -C "$DOTIG_PATH" stash list | wc -l
 }
 
+# Return the list of unpushed commits.
 get_unpushed_commits() {
   local _current_branch
   local _upstream_branch
@@ -224,6 +253,7 @@ get_unpushed_commits() {
   git -C "$DOTIG_PATH" log --oneline "$_upstream_branch"/"$_current_branch"..HEAD
 }
 
+# Check if the repo has Git submodules.
 has_submodules() {
   local _tmp
   local _submodules
@@ -238,8 +268,15 @@ has_submodules() {
   [ "${#_submodules[@]}" -gt 0 ]
 }
 
+# Update all the Git submodules.
 update_submodules() {
   git -C "$DOTIG_PATH" submodule update --init --recursive
+}
+
+# Return a list of Git submodule paths.
+get_submodules_path() {
+  # shellcheck disable=SC2016
+  git -C "$DOTIG_PATH" submodule -q foreach 'printf ${sm_path}"\n"'
 }
 
 ###############################################################################
@@ -248,10 +285,12 @@ update_submodules() {
 # installed.
 ###############################################################################
 
+# Check if the current OS is GNU/Linux.
 is_linux() {
   [ "$OSTYPE" = "linux-gnu" ]
 }
 
+# Check if the current distribution is Manjaro.
 is_manjaro() {
   if [ -f "/etc/os-release" ]; then
     # shellcheck disable=SC1091
@@ -264,6 +303,7 @@ is_manjaro() {
   fi
 }
 
+# Check for supported OS/distribution.
 check_os() {
   printf "Identifying the operating system...\n"
 
@@ -280,10 +320,12 @@ check_os() {
   fi
 }
 
+# Check if Git is installed.
 is_git_installed() {
   [ -x "$(command -v git)" ]
 }
 
+# Check if the commands required by the script are available.
 check_commands() {
   printf "Checking installed programs...\n"
 
@@ -297,6 +339,7 @@ check_commands() {
   fi
 }
 
+# Check if all the requirements are filled.
 check_requirements() {
   printf "Checking requirements...\n"
   check_os
@@ -310,6 +353,9 @@ check_requirements() {
 # Check if $DOTFILES is defined and if it is a repo. If not, set both.
 ###############################################################################
 
+# Set the dotfiles directory path and ask if the input is correct.
+# Require 1 argument to store the path.
+# Return the path to use.
 set_dotfiles_dir() {
   local _path
 
@@ -319,6 +365,9 @@ set_dotfiles_dir() {
   eval "$1=$_path"
 }
 
+# Check if $DOTFILES contain the correct path.
+# Require 1 argument to store the path.
+# Return the path to use.
 is_dotfiles_dir_set() {
   local _dotfiles_path
 
@@ -340,6 +389,9 @@ is_dotfiles_dir_set() {
   eval "$1=$_dotfiles_path"
 }
 
+# Check if the provided remote exists.
+# Argument 1: the remote to test.
+# Argument 2: a list of existing remotes.
 is_valid_remote_name() {
   [ $# -ne 2 ] && error_callback
 
@@ -349,6 +401,9 @@ is_valid_remote_name() {
   esac
 }
 
+# Ask the remote name when multiple remotes exist.
+# Require 1 argument to store the remote name.
+# Return the remote name.
 ask_remote_name() {
   local _git_remotes
   local _branch_name
@@ -375,6 +430,7 @@ ask_remote_name() {
   eval "$1=$_choice"
 }
 
+# Define the upstream branch and update the local repo.
 set_branch_upstream() {
   local _local_branch
   local _git_remotes
@@ -399,12 +455,15 @@ set_branch_upstream() {
   printf "%sSuccess:%s Upstream set.\n" "$_success_color" "$_no_color"
 }
 
+# Check if the upstream branch is set, if not define it.
 is_upstream_set() {
   if ! get_branch_upstream; then
     set_branch_upstream
   fi
 }
 
+# Check if the provided remote URL is a supported URL.
+# Argument 1: the URL to test.
 is_valid_remote_url() {
   [ $# -ne 1 ] && error_callback
 
@@ -416,6 +475,8 @@ is_valid_remote_url() {
   esac
 }
 
+# Check if the provided remote URL is a remote repository.
+# Argument 1: the URL to test.
 is_remote_exists() {
   [ $# -ne 1 ] && error_callback
 
@@ -432,6 +493,7 @@ is_remote_exists() {
   fi
 }
 
+# Define the remote repository.
 set_remote() {
   local _remote
 
@@ -450,6 +512,7 @@ set_remote() {
   printf "%sSuccess:%s Remote set.\n" "$_success_color" "$_no_color"
 }
 
+# Check if the remote repository is set, if not define it.
 is_remote_set() {
   if ! git -C "$DOTIG_PATH" config --get-regexp '^remote\.' > /dev/null 2>&1; then
     printf "\nDotig is a Git repository but the remote is not set.\n"
@@ -457,6 +520,7 @@ is_remote_set() {
   fi
 }
 
+# Initialize the Git submodules.
 init_submodules() {
   if has_submodules; then
     printf "Init submodules...\n"
@@ -465,6 +529,7 @@ init_submodules() {
   fi
 }
 
+# Initialize a new Git repository with remote, upstream and submodules.
 init_git() {
   git -C "$DOTIG_PATH" init
   printf "\n"
@@ -473,10 +538,12 @@ init_git() {
   init_submodules
 }
 
+# Check if the dotfiles backup directory is a Git repository.
 is_git_repo() {
   git -C "$DOTIG_PATH" rev-parse --git-dir > /dev/null 2>&1
 }
 
+# Check if the Git repository is ready, if not complete the configuration.
 is_git_configured() {
   local _choice
 
@@ -506,6 +573,8 @@ is_git_configured() {
   fi
 }
 
+# Check if the dotfiles path is set and if it is a Git repository, if not
+# configure it.
 check_dotfiles_repo() {
   is_dotfiles_dir_set DOTIG_PATH
   is_git_configured
@@ -517,6 +586,7 @@ check_dotfiles_repo() {
 # Call git to obtain some info about the repo status and display these info.
 ###############################################################################
 
+# Display the number of affected files foreach type of change.
 get_expanded_status() {
   local _untracked_files_count
   local _staged_files_count
@@ -547,6 +617,7 @@ get_expanded_status() {
   printf "%b\n" "$_expanded_status"
 }
 
+# Display the repository status.
 get_repo_status() {
   local _local_commit
   local _remote_commit
@@ -580,15 +651,19 @@ get_repo_status() {
 # Allow user to check current version of Dotig and to check for updates.
 ###############################################################################
 
+# Display the version number of Dotig.
 print_version() {
   printf "\nYour Dotig version is: %s\n" "$DOTIG_VERSION"
   return_menu
 }
 
+# Get a JSON object corresponding to the latest release.
 get_latest_release() {
   curl -s -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/ArmandPhilippot/dotig/releases/latest
 }
 
+# Check if a new release exist by comparing the current version and the version
+# of the latest release. If a new version exists, display a link to download it.
 check_dotig_updates() {
   local _latest_release
   local _tag_name
@@ -626,6 +701,8 @@ check_dotig_updates() {
 # Main feature of Dotig: handle backup of dotfiles and symlinking.
 ###############################################################################
 
+# Return the absolute path.
+# Argument 1: a path to convert. Also used to store the absolute path.
 get_absolute_path() {
   [ $# -ne 1 ] && error_callback
 
@@ -642,6 +719,9 @@ get_absolute_path() {
   eval "$1=$_absolute_path"
 }
 
+# Display the diff between two files.
+# Argument 1: the file residing in $HOME.
+# Argument 2: the file residing in $DOTFILES.
 print_diff() {
   local _home_dotfile=$1
   local _backup_dotfile=$2
@@ -668,6 +748,7 @@ print_diff() {
   fi
 }
 
+# Display the available choice to the user in case of duplicate files.
 print_handle_duplicate_menu() {
   printf "%s[1]%s Show diff\n" "$_choice_color" "$_no_color"
   printf "%s[2]%s Use %s (delete the other)\n" "$_choice_color" "$_no_color" "${_output_color}${_home_dotfile}${_no_color}"
@@ -675,6 +756,10 @@ print_handle_duplicate_menu() {
   printf "%s[4]%s Skip this file\n" "$_choice_color" "$_no_color"
 }
 
+# Ask user which action to perform in case of duplication and execute this
+# action.
+# Argument 1: the file residing in $HOME.
+# Argument 2: the file residing in $DOTFILES.
 handle_duplicate() {
   local _choice
   local _home_dotfile=$1
@@ -720,6 +805,8 @@ handle_duplicate() {
   done
 }
 
+# Move the dotfiles from $HOME to $DOTFILES and create a symlink.
+# Accept 0 or more arguments. If arguments are provided, files are expected.
 add_dotfiles() {
   local _dotfiles
   local _dest
@@ -748,12 +835,9 @@ add_dotfiles() {
   return_menu
 }
 
-get_submodules_path() {
-  # shellcheck disable=SC2016
-  git -C "$DOTIG_PATH" submodule -q foreach 'printf ${sm_path}"\n"'
-}
-
-find_cmd() {
+# Find all dotfiles in $DOTFILES/home excluding submodules.
+# Return a list of files.
+get_backup_dotfiles_list() {
   local _find_cmd
   local _exclude_dirs=()
   local _tmp
@@ -776,6 +860,11 @@ find_cmd() {
   "${_find_cmd[@]}"
 }
 
+# Ask user which action to perform in case of existing symlink with a different
+# target and execute the action.
+# Argument 1: the file (or symlink) residing in $DOTFILES.
+# Argument 2: the symlink residing in $HOME.
+# Argument 3: the symlink target.
 handle_update_target() {
   [ $# -ne 3 ] && error_callback
 
@@ -814,6 +903,11 @@ handle_update_target() {
   done
 }
 
+# In case of existing symlink, check if the symlink target is the expected one
+# or ask user.
+# Argument 1: the file (or symlink) residing in $DOTFILES.
+# Argument 2: the symlink residing in $HOME.
+# Argument 3: the symlink target.
 target_in_dotig_dir() {
   [ $# -ne 3 ] && error_callback
 
@@ -830,10 +924,13 @@ target_in_dotig_dir() {
   fi
 }
 
+# Find all broken symlinks in $HOME whose target is in $DOTFILES.
 get_broken_symlinks() {
   find "$HOME" -type l -not \( -path "$DOTIG_PATH/*" -prune \) -ilname "$DOTIG_PATH*" ! -exec test -e {} \; -print
 }
 
+# Check for broken symlinks in $HOME whose target is in $DOTFILES. If any,
+# remove them.
 remove_broken_symlinks() {
   local _tmp
 
@@ -856,6 +953,8 @@ remove_broken_symlinks() {
   rm "$_tmp"
 }
 
+# Create or update all symlinks in $HOME based on the dotfiles in
+# $DOTFILES/home and remove the broken symlinks.
 update_symlinks() {
   local _symlink
   local _symlink_target
@@ -863,7 +962,7 @@ update_symlinks() {
 
   printf "\nCreating symlink...\n"
   _tmp=$(mktemp "${TMPDIR:-/tmp}/dotig.XXXXXX")
-  find_cmd > "$_tmp"
+  get_backup_dotfiles_list > "$_tmp"
 
   while IFS= read -r file <&3; do
     if [ -h "$HOME${file#$DOTIG_PATH/home}" ]; then
@@ -891,6 +990,9 @@ update_symlinks() {
   return_menu
 }
 
+# Replace the symlink with the backup file.
+# Argument 1: the symlink.
+# Argument 2: the backup file.
 replace_symlink_with_file() {
   [ $# -ne 2 ] && error_callback
 
@@ -901,6 +1003,11 @@ replace_symlink_with_file() {
   printf "%sSuccess:%s %s replaced with %s\n" "$_success_color" "$_no_color" "$_symlink" "$_backup_file"
 }
 
+# Ask user which action to perform if the symlink target does not match the
+# backup file.
+# Argument 1: the symlink.
+# Argument 2: the symlink target.
+# Argument 3: the backup file.
 handle_target_issue() {
   [ $# -ne 3 ] && error_callback
 
@@ -934,6 +1041,8 @@ handle_target_issue() {
   done
 }
 
+# Replace all symlinks in $HOME whose target is in $DOTFILES/home with the
+# backup file.
 remove_symlinks() {
   local _symlink_target
   local _expected_target
@@ -971,6 +1080,7 @@ remove_symlinks() {
 # Second feature of Dotig: handle commit, push and pull from the script.
 ###############################################################################
 
+# Commit all changes in the $DOTFILES repository.
 commit_changes() {
   local _staged_files
 
@@ -988,6 +1098,7 @@ commit_changes() {
   return_menu
 }
 
+# Push all unpushed commits in $DOTFILES repository.
 push_changes() {
   local _unpushed_commits_count
   _unpushed_commits_count=$(get_unpushed_commits | wc -l)
@@ -1002,6 +1113,7 @@ push_changes() {
   return_menu
 }
 
+# Pull changes from remote repository.
 pull_changes() {
   local _local_commit
   local _remote_commit
@@ -1030,6 +1142,7 @@ pull_changes() {
   return_menu
 }
 
+# Update all Git submodules.
 update_all_submodules() {
   printf "\nChecking for Git submodules...\n"
   if has_submodules; then
@@ -1048,6 +1161,7 @@ update_all_submodules() {
 # Display all possible options.
 ###############################################################################
 
+# Ask user if he wants to return to the menu or exit Dotig.
 return_menu() {
   [ $_disable_menu = "true" ] && return
 
@@ -1067,6 +1181,7 @@ return_menu() {
   done
 }
 
+# Display the list of choices available in the main menu of Dotig.
 print_menu_options() {
   printf "Choose an action to perform:\n"
   printf "%s[1]%s Add dotfile(s) to your repo\n" "$_choice_color" "$_no_color"
@@ -1082,6 +1197,7 @@ print_menu_options() {
   printf "%s[q]%s Exit\n" "$_choice_color" "$_no_color"
 }
 
+# Display the main menu of Dotig.
 print_menu() {
   local _choice
 
@@ -1112,6 +1228,7 @@ print_menu() {
 # Entry point of Dotig.
 ###############################################################################
 
+# Display Dotig help.
 dotig_help() {
   printf "\nUsage: dotig [command] [options] [<files>]\n"
   printf "\n"
@@ -1135,6 +1252,7 @@ dotig_help() {
   return_menu
 }
 
+# Main entry point of Dotig.
 main() {
   display_logo
   check_requirements
