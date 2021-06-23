@@ -67,6 +67,7 @@ _no_color=$(printf '\e[0m')
 # Parameters
 _disable_menu="false"
 _show_repo_status="true"
+_verbose="false"
 
 ###############################################################################
 # Helpers
@@ -123,6 +124,10 @@ is_correct_path() {
     *) printf "%sError:%s please enter %s[y]%ses or %s[n]%so." "$_error_color" "$_no_color" "$_choice_color" "$_no_color" "$_choice_color" "$_no_color" ;;
     esac
   done
+}
+
+is_verbose() {
+  [ "$_verbose" = "true" ]
 }
 
 ###############################################################################
@@ -305,10 +310,12 @@ is_manjaro() {
 
 # Check for supported OS/distribution.
 check_os() {
-  printf "Identifying the operating system...\n"
+  is_verbose && printf "Identifying the operating system...\n"
 
   if is_linux; then
-    printf "%sSuccess:%s Linux is supported.\n" "$_success_color" "$_no_color"
+    if is_verbose; then
+      printf "%sSuccess:%s Linux is supported.\n" "$_success_color" "$_no_color"
+    fi
   else
     printf "%sError:%s Linux is the only supported operating system.\n" "$_error_color" "$_no_color"
     printf "Exit.\n"
@@ -327,10 +334,12 @@ is_git_installed() {
 
 # Check if the commands required by the script are available.
 check_commands() {
-  printf "Checking installed programs...\n"
+  is_verbose && printf "Checking installed programs...\n"
 
   if is_git_installed; then
-    printf "%sSuccess:%s Git is installed.\n" "$_success_color" "$_no_color"
+    if is_verbose; then
+      printf "%sSuccess:%s Git is installed.\n" "$_success_color" "$_no_color"
+    fi
   else
     printf "%sError:%s Dotig needs Git to function properly.\n" "$_error_color" "$_no_color"
     printf "Please install it before using this program.\n"
@@ -341,11 +350,13 @@ check_commands() {
 
 # Check if all the requirements are filled.
 check_requirements() {
-  printf "Checking requirements...\n"
+  is_verbose && printf "Checking requirements...\n"
   check_os
   check_commands
-  printf "%sSuccess:%s Requirements checked!\n" "$_success_color" "$_no_color"
-  printf "Let's continue.\n\n"
+  if is_verbose; then
+    printf "%sSuccess:%s Requirements checked!\n" "$_success_color" "$_no_color"
+    printf "Let's continue.\n\n"
+  fi
 }
 
 ###############################################################################
@@ -371,7 +382,7 @@ set_dotfiles_dir() {
 is_dotfiles_dir_set() {
   local _dotfiles_path
 
-  printf "For conveniance, Dotig uses a \$DOTFILES variable to determine the dotfiles backup path. If it is not set, you may want to declare it for future use.\n\n"
+  is_verbose && printf "For conveniance, Dotig uses a \$DOTFILES variable to determine the dotfiles backup path. If it is not set, you may want to declare it for future use.\n\n"
   printf "Checking if a \$DOTFILES variable is set...\n"
 
   if [ ! "$DOTFILES" ]; then
@@ -381,7 +392,7 @@ is_dotfiles_dir_set() {
     printf "%sWarning:%s The \$DOTFILES variable does not seem to match a directory.\n" "$_warning_color" "$_no_color"
     set_dotfiles_dir _dotfiles_path
   else
-    printf "%sSuccess:%s Found \$DOTFILES variable.\n" "$_success_color" "$_no_color"
+    is_verbose && printf "%sSuccess:%s Found \$DOTFILES variable.\n" "$_success_color" "$_no_color"
     _dotfiles_path=$DOTFILES
     is_correct_path _dotfiles_path
   fi
@@ -452,7 +463,9 @@ set_branch_upstream() {
 
   git -C "$DOTIG_PATH" fetch --set-upstream "$_remote_name" "$_remote_branch"
 
-  printf "%sSuccess:%s Upstream set.\n" "$_success_color" "$_no_color"
+  if is_verbose; then
+    printf "%sSuccess:%s Upstream set.\n" "$_success_color" "$_no_color"
+  fi
 }
 
 # Check if the upstream branch is set, if not define it.
@@ -509,13 +522,17 @@ set_remote() {
 
   is_remote_exists _remote
   git -C "$DOTIG_PATH" remote add origin "$_remote"
-  printf "%sSuccess:%s Remote set.\n" "$_success_color" "$_no_color"
+  if is_verbose; then
+    printf "%sSuccess:%s Remote set.\n" "$_success_color" "$_no_color"
+  fi
 }
 
 # Check if the remote repository is set, if not define it.
 is_remote_set() {
   if ! git -C "$DOTIG_PATH" config --get-regexp '^remote\.' > /dev/null 2>&1; then
-    printf "\nDotig is a Git repository but the remote is not set.\n"
+    if is_verbose; then
+      printf "\n%sWarning:%s Dotig is a Git repository but the remote is not set.\n\n" "$_warning_color" "$_no_color"
+    fi
     set_remote
   fi
 }
@@ -523,9 +540,13 @@ is_remote_set() {
 # Initialize the Git submodules.
 init_submodules() {
   if has_submodules; then
-    printf "Init submodules...\n"
+    if is_verbose; then
+      printf "Init submodules...\n"
+    fi
     update_submodules
-    printf "%sSuccess:%s All submodules have been initialized and updated.\n" "$_success_color" "$_no_color"
+    if is_verbose; then
+      printf "%sSuccess:%s All submodules have been initialized and updated.\n" "$_success_color" "$_no_color"
+    fi
   fi
 }
 
@@ -547,7 +568,7 @@ is_git_repo() {
 is_git_configured() {
   local _choice
 
-  printf "\nChecking if Git is configured...\n"
+  is_verbose && printf "\nChecking if Git is configured...\n"
 
   if ! is_git_repo; then
     printf "\n%sWarning:%s Your dotfiles directory is not a Git repository.\n" "$_warning_color" "$_no_color"
@@ -739,7 +760,7 @@ print_diff() {
   _divider=${_padding// /=}
 
   if diff -q "$_home_dotfile" "$_backup_dotfile" > /dev/null 2>&1; then
-    printf "\nBoth files are identical."
+    printf "\nBoth files are identical.\n"
   else
     printf "\nThe two files are different. See the diff of %s:\n\n" "${_output_color}${_filename}${_no_color}"
     printf "%s%0.${_padding_lenght}s%s\n" "$HOME" "$_padding" "$DOTIG_PATH";
@@ -783,21 +804,19 @@ handle_duplicate() {
         printf "\n"
         ;;
       2)
-        printf "Deleting %s and creating symlink...\n" "${_output_color}${_backup_dotfile}${_no_color}"
         mv -f "$_home_dotfile" "$_backup_dotfile"
         ln -s "$_backup_dotfile" "$_home_dotfile"
-        printf "Done.\n"
+        printf "\n%sSuccess:%s %s replaced with %s and symlink created.\n" "$_success_color" "$_no_color" "${_output_color}${_backup_dotfile}${_no_color}" "${_output_color}${_home_dotfile}${_no_color}"
         break
         ;;
       3)
-        printf "Deleting %s and creating symlink...\n" "${_output_color}${_home_dotfile}${_no_color}"
         rm "$_home_dotfile"
         ln -s "$_backup_dotfile" "$_home_dotfile"
-        printf "Done.\n"
+        printf "\n%sSuccess:%s %s replaced with a symlink.\n" "$_success_color" "$_no_color" "${_output_color}${_home_dotfile}${_no_color}"
         break
         ;;
       4)
-        printf "%sSkipped:%s %s\n" "$_warning_color" "$_no_color" "$_home_dotfile"
+        printf "\n%sSkipped:%s %s\n" "$_warning_color" "$_no_color" "$_home_dotfile"
         break
         ;;
       *) printf "%sError:%s choose between %s[1]%s, %s[2]%s, %s[3]%s or %s[4]%s.\n" "$_error_color" "$_no_color" "$_choice_color" "$_no_color" "$_choice_color" "$_no_color" "$_choice_color" "$_no_color" "$_choice_color" "$_no_color"
@@ -917,8 +936,10 @@ target_in_dotig_dir() {
   local _choice
 
   if [ "$_symlink_target" = "$_file" ]; then
-    printf "A symlink with the same target already exists.\n"
-    printf "%sSkipped:%s %s\n" "$_warning_color" "$_no_color" "$file"
+    if is_verbose; then
+      printf "A symlink with the same target already exists.\n"
+      printf "%sSkipped:%s %s\n" "$_warning_color" "$_no_color" "$file"
+    fi
   else
     handle_update_target "$_file" "$_symlink" "$_symlink_target"
   fi
@@ -942,12 +963,14 @@ remove_broken_symlinks() {
   if [ -s "$_tmp" ]; then
     while IFS= read -r file <&3; do
       rm "$file"
-      printf "%sSuccess:%s %s removed...\n" "$_success_color" "$_no_color" "$file"
+      is_verbose && printf "%sSuccess:%s %s removed...\n" "$_success_color" "$_no_color" "$file"
     done 3< "$_tmp"
 
     printf "%sSuccess:%s All broken symlinks removed...\n" "$_success_color" "$_no_color"
   else
-    printf "No broken symlinks found.\n"
+    if is_verbose; then
+      printf "No broken symlinks found.\n"
+    fi
   fi
 
   rm "$_tmp"
@@ -977,7 +1000,7 @@ update_symlinks() {
       handle_duplicate "$HOME${file#$DOTIG_PATH/home}" "$file"
     else
       ln -s "$file" "$HOME/${file#$DOTIG_PATH/home}"
-      printf "%sSuccess:%s Symlink created for %s\n" "$_success_color" "$_no_color" "$file"
+      is_verbose && printf "%sSuccess:%s Symlink created for %s\n" "$_success_color" "$_no_color" "$file"
     fi
   done 3< "$_tmp"
 
@@ -1000,7 +1023,9 @@ replace_symlink_with_file() {
   local _backup_file=$2
 
   cp --remove-destination "$_backup_file" "$_symlink"
-  printf "%sSuccess:%s %s replaced with %s\n" "$_success_color" "$_no_color" "$_symlink" "$_backup_file"
+  if is_verbose; then
+    printf "%sSuccess:%s %s replaced with %s\n" "$_success_color" "$_no_color" "$_symlink" "$_backup_file"
+  fi
 }
 
 # Ask user which action to perform if the symlink target does not match the
@@ -1033,7 +1058,7 @@ handle_target_issue() {
       break
       ;;
     2)
-      printf "\n%sSkipped:%s %s\n" "$_warning_color" "$_no_color" "$_symlink"
+      is_verbose && printf "\n%sSkipped:%s %s\n" "$_warning_color" "$_no_color" "$_symlink"
       break
       ;;
     *) printf "%sError:%s Enter %s[1]%s or %s[2]%s." "$_error_color" "$_no_color" "$_choice_color" "$_no_color" "$_choice_color" "$_no_color" ;;
@@ -1144,11 +1169,11 @@ pull_changes() {
 
 # Update all Git submodules.
 update_all_submodules() {
-  printf "\nChecking for Git submodules...\n"
+  is_verbose && printf "\nChecking for Git submodules...\n"
   if has_submodules; then
-    printf "Updating Git submodules...\n"
+    is_verbose && printf "Updating Git submodules..."
     update_submodules
-    printf "%sSuccess:%s All submodules have been updated.\n" "$_success_color" "$_no_color"
+    printf "\n%sSuccess:%s All submodules have been updated.\n" "$_success_color" "$_no_color"
   else
     printf "No submodules found.\n"
   fi
@@ -1252,7 +1277,8 @@ remove, rm        Replace all symlinks with the original file.
 OPTIONS
 -h, --help        Print this help.
 -ns, --no-status  Do not show the repo status.
--v, --version     Print Dotig version and check for new releases.
+-v, --verbose     Explain what is done.
+--version         Print Dotig version and check for new releases.
 
 CONFIGURATION
 \$DOTFILES         Define the path of your dotfiles repository.
@@ -1277,7 +1303,6 @@ main() {
   display_logo
   check_requirements
   check_dotfiles_repo
-  printf "\nWelcome!\n"
   [ $_show_repo_status = "true" ] && get_repo_status
   print_menu
 }
@@ -1288,26 +1313,51 @@ else
   [ ! "$DOTFILES" ] && error_callback
   [ ! -d "$DOTFILES" ] && error_callback
   DOTIG_PATH="$DOTFILES"
-  _disable_menu="true"
 
   case $1 in
   add)
+    _disable_menu="true"
     shift 1
     add_dotfiles "$@"
     ;;
-  update) update_symlinks ;;
-  commit) commit_changes ;;
-  push) push_changes ;;
-  pull) pull_changes ;;
-  submodule) update_all_submodules ;;
-  rm|remove) remove_symlinks ;;
-  --help|-h) dotig_help ;;
+  update)
+    _disable_menu="true"
+    update_symlinks
+    ;;
+  commit)
+    _disable_menu="true"
+    commit_changes
+    ;;
+  push)
+    _disable_menu="true"
+    push_changes
+    ;;
+  pull)
+    _disable_menu="true"
+    pull_changes
+    ;;
+  submodule)
+    _disable_menu="true"
+    update_all_submodules
+    ;;
+  rm|remove)
+    _disable_menu="true"
+    remove_symlinks
+    ;;
+  --help|-h)
+    _disable_menu="true"
+    dotig_help
+    ;;
   --no-status|-ns)
-    _disable_menu="false"
     _show_repo_status="false"
     main
     ;;
-  --version|-v)
+  --verbose|-v)
+    _verbose="true"
+    main
+    ;;
+  --version)
+    _disable_menu="true"
     print_version
     check_dotig_updates
     ;;
