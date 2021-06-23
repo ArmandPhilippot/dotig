@@ -1230,24 +1230,44 @@ print_menu() {
 
 # Display Dotig help.
 dotig_help() {
-  printf "\nUsage: dotig [command] [options] [<files>]\n"
-  printf "\n"
-  printf "Note: only \`dotig add\` accept [<files>].\n"
-  printf "\n"
-  printf "COMMANDS\n"
-  printf "add\t\tAdd new dotfiles to your backup directory and create symlinks.\n"
-  printf "\t\tAccept both absolute and relative paths.\n"
-  printf "update\t\tUpdate all symlinks.\n"
-  printf "commit\t\tUse Git to commit all changes.\n"
-  printf "push\t\tUse Git to push all changes.\n"
-  printf "pull\t\tUse Git to pull changes from remote.\n"
-  printf "submodule\tUpdate Git submodules.\n"
-  printf "remove, rm\tReplace all symlinks with the original file. This last will be conserved.\n"
-  printf "\n"
-  printf "OPTIONS\n"
-  printf -- "--help, -h\t\tPrint this help.\n"
-  printf -- "--no-status, -ns\tDo not show the repo status. Can be useful to quickly launch Dotig.\n"
-  printf -- "--version, -v\t\tPrint Dotig version and check for new releases.\n"
+  cat <<EOF
+USAGE
+dotig [OPTIONS]
+dotig <COMMANDS> [<FILES...>]
+
+DESCRIPTION
+Dotig is a dotfiles manager to quickly setup your machine & synchronize your dotfiles with Git.
+
+COMMANDS
+add               Add new dotfiles and create symlinks.
+                  Accept both absolute and relative paths.
+update            Update all symlinks.
+commit            Use Git to commit all changes.
+push              Use Git to push all changes.
+pull              Use Git to pull changes from remote.
+submodule         Update Git submodules.
+remove, rm        Replace all symlinks with the original file.
+                  The original will be conserved in your repository.
+
+OPTIONS
+-h, --help        Print this help.
+-ns, --no-status  Do not show the repo status.
+-v, --version     Print Dotig version and check for new releases.
+
+CONFIGURATION
+\$DOTFILES         Define the path of your dotfiles repository.
+                  Declare its value in your shell.
+                  For example in .profile for Bash or .zshenv for Zsh.
+                  Current value: $DOTFILES
+
+BUGS
+If you find any bug, you can report it on https://github.com/ArmandPhilippot/dotig/issues.
+
+ABOUT
+version           Dotig $DOTIG_VERSION
+license           MIT
+project url       https://github.com/ArmandPhilippot/dotig
+EOF
 
   return_menu
 }
