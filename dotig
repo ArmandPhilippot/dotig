@@ -55,6 +55,7 @@ DOTIG_LOGO=$(
 EOF
 )
 DOTIG_PATH=""
+DOTIG_COMMANDS=("add" "update" "commit" "push" "pull" "submodule" "rm")
 
 # Colors
 _error_color=$(printf '\e[31m')
@@ -1282,7 +1283,7 @@ commit            Use Git to commit all changes.
 push              Use Git to push all changes.
 pull              Use Git to pull changes from remote.
 submodule         Update Git submodules.
-remove, rm        Replace all symlinks with the original file.
+rm                Replace all symlinks with the original file.
                   The original will be conserved in your repository.
 
 OPTIONS
@@ -1321,42 +1322,39 @@ main() {
 if [ $# -eq 0 ]; then
   main
 else
-  [ ! "$DOTFILES" ] && error_callback
-  [ ! -d "$DOTFILES" ] && error_callback
-  DOTIG_PATH="$DOTFILES"
+  for _command in "${DOTIG_COMMANDS[@]}"; do
+    if [ "$1" = "$_command" ]; then
+      [ ! "$DOTFILES" ] && error_callback
+      [ ! -d "$DOTFILES" ] && error_callback
+      DOTIG_PATH="$DOTFILES"
+      _disable_menu="true"
+    fi
+  done
 
   case $1 in
   add)
-    _disable_menu="true"
     shift 1
     add_dotfiles "$@"
     ;;
   update)
-    _disable_menu="true"
     update_symlinks
     ;;
   commit)
-    _disable_menu="true"
     commit_changes
     ;;
   push)
-    _disable_menu="true"
     push_changes
     ;;
   pull)
-    _disable_menu="true"
     pull_changes
     ;;
   submodule)
-    _disable_menu="true"
     update_all_submodules
     ;;
-  rm|remove)
-    _disable_menu="true"
+  rm)
     remove_symlinks
     ;;
   --help|-h)
-    _disable_menu="true"
     dotig_help
     ;;
   --no-status|-ns)
