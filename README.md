@@ -1,5 +1,7 @@
 # Dotig
 
+![License](https://img.shields.io/github/license/ArmandPhilippot/dotig?color=blue&colorA=4c4f56&label=License&style=flat-square) ![Version](https://img.shields.io/github/package-json/v/ArmandPhilippot/dotig?color=blue&colorA=4c4f56&label=Version&style=flat-square)
+
 A dotfiles manager to quickly setup your machine & synchronize your dotfiles.
 
 ## Description
