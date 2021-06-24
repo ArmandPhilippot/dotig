@@ -1361,6 +1361,11 @@ is_dotig_cli_command() {
 # Require 1 or more arguments.
 # Argument 1: a valid command.
 handle_dotig_cli_commands() {
+  [ ! "$DOTFILES" ] && dotfiles_dir_error
+  [ ! -d "$DOTFILES" ] && dotfiles_dir_error
+  DOTIG_PATH="$DOTFILES"
+  _disable_menu="true"
+
   if [ $# -eq 1 ]; then
     case $1 in
     add) add_dotfiles ;;
@@ -1381,6 +1386,8 @@ handle_dotig_cli_commands() {
     *) invalid_usage ;;
     esac
   fi
+
+  exit
 }
 
 # Change Dotig parameters according to the options passed through CLI
@@ -1398,7 +1405,13 @@ loop_through_options() {
       _verbose="true"
       shift
       ;;
-    *) invalid_usage ;;
+    *)
+      if is_dotig_cli_command "$1"; then
+        handle_dotig_cli_commands "$@"
+      else
+        invalid_usage
+      fi
+      ;;
     esac
   done
 }
@@ -1436,10 +1449,6 @@ handle_dotig_cli_options() {
 # Require 1 or more arguments.
 dotig_cli() {
   if is_dotig_cli_command "$1"; then
-    [ ! "$DOTFILES" ] && dotfiles_dir_error
-    [ ! -d "$DOTFILES" ] && dotfiles_dir_error
-    DOTIG_PATH="$DOTFILES"
-    _disable_menu="true"
     handle_dotig_cli_commands "$@"
   else
     handle_dotig_cli_options "$@"
