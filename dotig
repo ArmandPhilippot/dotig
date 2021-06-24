@@ -1383,34 +1383,52 @@ handle_dotig_cli_commands() {
   fi
 }
 
+# Change Dotig parameters according to the options passed through CLI
+# Require at least one argument.
+loop_through_options() {
+  [ $# -eq 0 ] && error_callback
+
+  while [ $# -ge 1 ]; do
+    case $1 in
+    --no-status|-ns)
+      _show_repo_status="false"
+      shift
+      ;;
+    --verbose|-v)
+      _verbose="true"
+      shift
+      ;;
+    *) invalid_usage ;;
+    esac
+  done
+}
+
 # Redirect command to the right function.
 # Require 1 or more arguments.
 # Argument 1: a valid option.
 # Additional arguments are also valid options.
 handle_dotig_cli_options() {
+  [ $# -eq 0 ] && error_callback
+
   if [ $# -eq 1 ]; then
     case $1 in
     --help|-h)
       _disable_menu="true"
       dotig_help
       ;;
-    --no-status|-ns)
-      _show_repo_status="false"
-      main
-      ;;
-    --verbose|-v)
-      _verbose="true"
-      main
-      ;;
     --version)
       _disable_menu="true"
       print_version
       check_dotig_updates
       ;;
-    *) invalid_usage ;;
+    *)
+      loop_through_options "$@"
+      main
+      ;;
     esac
   else
-    invalid_usage
+    loop_through_options "$@"
+    main
   fi
 }
 
