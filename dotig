@@ -80,12 +80,6 @@ display_logo() {
   printf "%s\n\n" "$DOTIG_LOGO"
 }
 
-# Exit the script in case of an unplanned scenario.
-error_callback() {
-  printf "%sAn unexpected error occurred.%s Exit.\n" "$_error_color" "$_no_color"
-  exit 1
-}
-
 # Prompt user to define an existing directory path.
 # Return the entered path.
 set_path() {
@@ -129,6 +123,31 @@ is_correct_path() {
 
 is_verbose() {
   [ "$_verbose" = "true" ]
+}
+
+###############################################################################
+# Error Helpers
+# Functions to handle the various error messages.
+###############################################################################
+
+# Exit the script in case of an unplanned scenario.
+error_callback() {
+  printf "%sAn unexpected error occurred.%s Exit.\n" "$_error_color" "$_no_color"
+  exit 1
+}
+
+# Exit the script in case of invalid usage.
+invalid_usage() {
+  printf "%sError:%s invalid usage.\n" "$_error_color" "$_no_color"
+  printf "Use \`dotig --help\` or \`dotig -h\` to display all accepted commands and options.\n"
+  exit 1
+}
+
+# Exit the script if CLI is used but $DOTFILES is not defined.
+dotfiles_dir_error() {
+  printf "%sError:%s \$DOTFILES must be set to use Dotig command line interface.\n" "$_error_color" "$_no_color"
+  printf "See CONFIGURATION in \`dotig --help\` or \`dotig -h\`.\n"
+  exit 1
 }
 
 ###############################################################################
@@ -664,7 +683,7 @@ get_repo_status() {
     printf "Status: %sdirty repo!%s\n" "$_warning_color" "$_no_color"
     get_expanded_status
   else
-    printf "Status: %sclean repo!%s\n\n" "$_success_color" "$_no_color"
+    printf "Status: %sclean repo!%s\n" "$_success_color" "$_no_color"
   fi
 }
 
@@ -1194,78 +1213,11 @@ update_all_submodules() {
 }
 
 ###############################################################################
-# Menu
-# Display all possible options.
+# Help menus
+# Functions to print the various help menus.
 ###############################################################################
 
-# Ask user if he wants to return to the menu or exit Dotig.
-return_menu() {
-  [ $_disable_menu = "true" ] && return
-
-  local _choice
-
-  while true; do
-    printf "\nWhat do you want to do: return to the menu %s[r]%s or exit %s[q]%s? " "$_choice_color" "$_no_color" "$_choice_color" "$_no_color"
-    read -r _choice
-
-    case $_choice in
-    [rR]) return ;;
-    [qQ]) exit ;;
-    *)
-      printf "%sError:%s invalid choice. Please enter %s[r]%seturn or %s[e]%sxit.\n" "$_error_color" "$_no_color" "$_choice_color" "$_no_color" "$_choice_color" "$_no_color"
-      ;;
-    esac
-  done
-}
-
-# Display the list of choices available in the main menu of Dotig.
-print_menu_options() {
-  printf "Choose an action to perform:\n"
-  printf "%s[1]%s Add dotfile(s) to your repo\n" "$_choice_color" "$_no_color"
-  printf "%s[2]%s Update symlinks\n" "$_choice_color" "$_no_color"
-  printf "%s[3]%s Commit dotfiles changes\n" "$_choice_color" "$_no_color"
-  printf "%s[4]%s Push changes to remote\n" "$_choice_color" "$_no_color"
-  printf "%s[5]%s Pull changes from remote\n" "$_choice_color" "$_no_color"
-  printf "%s[6]%s Update all Git submodules\n" "$_choice_color" "$_no_color"
-  printf "%s[7]%s Remove all symlinks\n" "$_choice_color" "$_no_color"
-  printf "%s[8]%s Check for Dotig update\n" "$_choice_color" "$_no_color"
-  printf "%s[9]%s Print Dotig version\n" "$_choice_color" "$_no_color"
-  printf "%s[10]%s Print Dotig help\n" "$_choice_color" "$_no_color"
-  printf "%s[q]%s Exit\n" "$_choice_color" "$_no_color"
-}
-
-# Display the main menu of Dotig.
-print_menu() {
-  local _choice
-
-  while true; do
-    print_menu_options
-    printf "Your choice: "
-    read -r _choice
-
-    case $_choice in
-    1) add_dotfiles ;;
-    2) update_symlinks ;;
-    3) commit_changes ;;
-    4) push_changes ;;
-    5) pull_changes ;;
-    6) update_all_submodules ;;
-    7) remove_symlinks ;;
-    8) check_dotig_updates ;;
-    9) print_version ;;
-    10) dotig_help ;;
-    [qQ]) exit ;;
-    *) printf "\n%sError:%s Invalid choice. Try again.\n" "$_error_color" "$_no_color" ;;
-    esac
-  done
-}
-
-###############################################################################
-# Main
-# Entry point of Dotig.
-###############################################################################
-
-# Display Dotig help.
+# Display the main help menu.
 dotig_help() {
   cat <<EOF
 USAGE
@@ -1310,6 +1262,78 @@ EOF
   return_menu
 }
 
+###############################################################################
+# Menu
+# Display all possible options.
+###############################################################################
+
+# Ask user if he wants to return to the menu or exit Dotig.
+return_menu() {
+  [ $_disable_menu = "true" ] && return
+
+  local _choice
+
+  while true; do
+    printf "\nWhat do you want to do: return to the menu %s[r]%s or exit %s[q]%s? " "$_choice_color" "$_no_color" "$_choice_color" "$_no_color"
+    read -r _choice
+
+    case $_choice in
+    [rR]) return ;;
+    [qQ]) exit ;;
+    *)
+      printf "%sError:%s invalid choice. Please enter %s[r]%seturn or %s[e]%sxit.\n" "$_error_color" "$_no_color" "$_choice_color" "$_no_color" "$_choice_color" "$_no_color"
+      ;;
+    esac
+  done
+}
+
+# Display the list of choices available in the main menu of Dotig.
+print_menu_options() {
+  printf "\nChoose an action to perform:\n"
+  printf "%s[1]%s Add dotfile(s) to your repo\n" "$_choice_color" "$_no_color"
+  printf "%s[2]%s Update symlinks\n" "$_choice_color" "$_no_color"
+  printf "%s[3]%s Commit dotfiles changes\n" "$_choice_color" "$_no_color"
+  printf "%s[4]%s Push changes to remote\n" "$_choice_color" "$_no_color"
+  printf "%s[5]%s Pull changes from remote\n" "$_choice_color" "$_no_color"
+  printf "%s[6]%s Update all Git submodules\n" "$_choice_color" "$_no_color"
+  printf "%s[7]%s Remove all symlinks\n" "$_choice_color" "$_no_color"
+  printf "%s[8]%s Check for Dotig update\n" "$_choice_color" "$_no_color"
+  printf "%s[9]%s Print Dotig version\n" "$_choice_color" "$_no_color"
+  printf "%s[10]%s Print Dotig help\n" "$_choice_color" "$_no_color"
+  printf "%s[q]%s Exit\n" "$_choice_color" "$_no_color"
+}
+
+# Display the main menu of Dotig.
+print_menu() {
+  local _choice
+
+  while true; do
+    print_menu_options
+    printf "Your choice: "
+    read -r _choice
+
+    case $_choice in
+    1) add_dotfiles ;;
+    2) update_symlinks ;;
+    3) commit_changes ;;
+    4) push_changes ;;
+    5) pull_changes ;;
+    6) update_all_submodules ;;
+    7) remove_symlinks ;;
+    8) check_dotig_updates ;;
+    9) print_version ;;
+    10) dotig_help ;;
+    [qQ]) exit ;;
+    *) printf "\n%sError:%s Invalid choice. Try again.\n" "$_error_color" "$_no_color" ;;
+    esac
+  done
+}
+
+###############################################################################
+# Main
+# Entry point of Dotig.
+###############################################################################
+
 # Main entry point of Dotig.
 main() {
   display_logo
@@ -1319,60 +1343,97 @@ main() {
   print_menu
 }
 
+###############################################################################
+# CLI
+# Handle the command line interface scenario.
+###############################################################################
+
+# Check if the first argument provided is an available command.
+# Argument 1: the command to test.
+is_dotig_cli_command() {
+  for _command in "${DOTIG_COMMANDS[@]}"; do
+    [ "$1" = "$_command" ] && return 0
+  done
+  return 1
+}
+
+# Redirect command to the right function.
+# Require 1 or more arguments.
+# Argument 1: a valid command.
+handle_dotig_cli_commands() {
+  if [ $# -eq 1 ]; then
+    case $1 in
+    add) add_dotfiles ;;
+    update) update_symlinks ;;
+    commit) commit_changes ;;
+    push) push_changes ;;
+    pull) pull_changes ;;
+    submodule) update_all_submodules ;;
+    rm) remove_symlinks ;;
+    *) error_callback ;;
+    esac
+  else
+    case $1 in
+    add)
+      shift
+      add_dotfiles "$@"
+      ;;
+    *) invalid_usage ;;
+    esac
+  fi
+}
+
+# Redirect command to the right function.
+# Require 1 or more arguments.
+# Argument 1: a valid option.
+# Additional arguments are also valid options.
+handle_dotig_cli_options() {
+  if [ $# -eq 1 ]; then
+    case $1 in
+    --help|-h)
+      _disable_menu="true"
+      dotig_help
+      ;;
+    --no-status|-ns)
+      _show_repo_status="false"
+      main
+      ;;
+    --verbose|-v)
+      _verbose="true"
+      main
+      ;;
+    --version)
+      _disable_menu="true"
+      print_version
+      check_dotig_updates
+      ;;
+    *) invalid_usage ;;
+    esac
+  else
+    invalid_usage
+  fi
+}
+
+# Handle Dotig CLI.
+# Require 1 or more arguments.
+dotig_cli() {
+  if is_dotig_cli_command "$1"; then
+    [ ! "$DOTFILES" ] && dotfiles_dir_error
+    [ ! -d "$DOTFILES" ] && dotfiles_dir_error
+    DOTIG_PATH="$DOTFILES"
+    _disable_menu="true"
+    handle_dotig_cli_commands "$@"
+  else
+    handle_dotig_cli_options "$@"
+  fi
+}
+
+###############################################################################
+# Run the script
+###############################################################################
+
 if [ $# -eq 0 ]; then
   main
 else
-  for _command in "${DOTIG_COMMANDS[@]}"; do
-    if [ "$1" = "$_command" ]; then
-      [ ! "$DOTFILES" ] && error_callback
-      [ ! -d "$DOTFILES" ] && error_callback
-      DOTIG_PATH="$DOTFILES"
-      _disable_menu="true"
-    fi
-  done
-
-  case $1 in
-  add)
-    shift 1
-    add_dotfiles "$@"
-    ;;
-  update)
-    update_symlinks
-    ;;
-  commit)
-    commit_changes
-    ;;
-  push)
-    push_changes
-    ;;
-  pull)
-    pull_changes
-    ;;
-  submodule)
-    update_all_submodules
-    ;;
-  rm)
-    remove_symlinks
-    ;;
-  --help|-h)
-    dotig_help
-    ;;
-  --no-status|-ns)
-    _show_repo_status="false"
-    main
-    ;;
-  --verbose|-v)
-    _verbose="true"
-    main
-    ;;
-  --version)
-    _disable_menu="true"
-    print_version
-    check_dotig_updates
-    ;;
-  *)
-    printf "%sError:%s invalid usage.\n" "$_error_color" "$_no_color"
-    printf "Use \`dotig --help\` or \`dotig -h\` to display all accepted commands and options.\n"
-    ;;
-  esac
+  dotig_cli "$@"
 fi
