@@ -55,7 +55,7 @@ DOTIG_LOGO=$(
 EOF
 )
 DOTIG_PATH=""
-DOTIG_COMMANDS=("add" "update" "commit" "push" "pull" "submodule" "rm")
+DOTIG_COMMANDS=("add" "update" "commit" "push" "pull" "submodule" "rm" "status")
 
 # Colors
 _error_color=$(printf '\e[31m')
@@ -1237,6 +1237,8 @@ pull              Use Git to pull changes from remote.
 submodule         Update Git submodules.
 rm                Replace all symlinks with the original file.
                   The original will be conserved in your repository.
+status            Display the status of your dotfiles repository.
+                  Check for dirty files and if push or pull is needed.
 
 OPTIONS
 -h, --help        Print this help.
@@ -1375,6 +1377,7 @@ handle_dotig_cli_commands() {
     pull) pull_changes ;;
     submodule) update_all_submodules ;;
     rm) remove_symlinks ;;
+    status) get_repo_status ;;
     *) error_callback ;;
     esac
   else
