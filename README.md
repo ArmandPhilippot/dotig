@@ -99,6 +99,14 @@ In order for the script to remember your dotfiles directory, you may want to def
 export DOTFILES="$HOME/.dotfiles"
 ```
 
+## Motivation
+
+I know it already exists a lot of solution to manage the dotfiles like bare repository, [chezmoi](https://github.com/twpayne/chezmoi) or [dotbot](https://github.com/anishathalye/dotbot) for example. I tested some of them but I'm not satisfied. So, I decided to create my own script to manage **my** dotfiles the way I wanted. As the features grew, I thought that the script could be helpful to others. So, Dogit is born.
+
+At first, I wanted a solution that include Git and GNU Stow. Finally, I realized that I didn't need GNU Stow. It was easier to create the symlinks "manually" and it allowed me to keep the desired structure. And, that way, it takes away a dependency and makes the script more portable.
+
+However, for now, as you can see in [Requirements](#requirements), the compatibility with other OS is not guaranteed. But, it is a possible development.
+
 ## License
 
 This project is open-source and it is licensed under the [MIT license](./LICENSE).
