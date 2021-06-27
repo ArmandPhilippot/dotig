@@ -122,6 +122,32 @@ is_correct_path() {
   done
 }
 
+# Check if a file is in $HOME.
+# Argument 1: the file to test
+is_file_in_home() {
+  [ $# -eq 0 ] && error_unexpected
+
+  local _file=$1
+
+  case $_file in
+    "$HOME"*) return 0 ;;
+    *) return 1
+  esac
+}
+
+# Check if a file is in $DOTIG_PATH.
+# Argument 1: the file to test
+is_file_in_backup_path() {
+  [ $# -eq 0 ] && error_unexpected
+
+  local _file=$1
+
+  case $_file in
+    "$DOTIG_PATH"*) return 0 ;;
+    *) return 1
+  esac
+}
+
 is_verbose() {
   [ "$_verbose" = "true" ]
 }
@@ -308,6 +334,25 @@ get_submodules_path() {
 # Check if the dotfiles backup directory is a Git repository.
 is_git_repo() {
   git -C "$DOTIG_PATH" rev-parse --git-dir > /dev/null 2>&1
+}
+
+###############################################################################
+# XDG Specification
+# Use XDG paths to handle dotfiles and symlinks.
+###############################################################################
+
+# Check if XDG path are set, if not set them.
+set_xdg_paths() {
+  if is_linux; then
+    XDG_BIN_HOME=${XDG_BIN_HOME:-$HOME/.local/bin}
+    XDG_CACHE_HOME=${XDG_CACHE_HOME:-$HOME/.cache}
+    XDG_CONFIG_HOME=${XDG_CONFIG_HOME:-$HOME/.config}
+    XDG_DATA_HOME=${XDG_DATA_HOME:-$HOME/.local/share}
+    XDG_LIB_HOME=${XDG_LIB_HOME:-$HOME/.local/lib}
+  else
+    printf "%sError:%s Only Linux is supported.\n" "$_color_error" "$_color_reset"
+    exit 2
+  fi
 }
 
 ###############################################################################
@@ -764,22 +809,10 @@ get_absolute_path() {
   local _absolute_path
 
   case $_file in
-  /*)
-    [ ! -e "$_file" ] && printf "%sError:%s %s is not a file.\n" "$_color_error" "$_color_reset" "$_file" && exit 2
-    _absolute_path=$_file
-    ;;
-  \~/*)
-    _absolute_path="$HOME/${_file:2}"
-    [ ! -e "$_absolute_path" ] && printf "%sError:%s %s is not a file.\n" "$_color_error" "$_color_reset" "$_absolute_path" && exit 2
-    ;;
-  ./*)
-    _absolute_path="$(pwd)/${_file:2}"
-    [ ! -e "$_absolute_path" ] && printf "%sError:%s %s is not a file.\n" "$_color_error" "$_color_reset" "$_absolute_path" && exit 2
-    ;;
-  *)
-    [ ! -e "$_file" ] && printf "%sError:%s %s is not a file.\n" "$_color_error" "$_color_reset" "$_file" && exit 2
-    _absolute_path="$(pwd)/$_file"
-    ;;
+  /*) _absolute_path=$_file ;;
+  \~/*) _absolute_path="$HOME/${_file:2}" ;;
+  ./*) _absolute_path="$(pwd)/${_file:2}" ;;
+  *) _absolute_path="$(pwd)/$_file" ;;
   esac
 
   eval "$1=$_absolute_path"
@@ -830,7 +863,7 @@ handle_duplicate() {
   local _home_dotfile=$1
   local _backup_dotfile=$2
 
-  printf "%sWarning:%s A file with the same name already exists.\n" "$_color_warning" "$_color_reset"
+  printf "\n%sWarning:%s A file with the same name already exists.\n" "$_color_warning" "$_color_reset"
 
   [ -h "$_backup_dotfile" ] && printf "%sWarning:%s %s is a symlink.\n" "$_color_warning" "$_color_reset" "${_color_output}${_backup_dotfile}${_color_reset}"
   [ -h "$_home_dotfile" ] && printf "%sWarning:%s %s is a symlink.\n" "$_color_warning" "$_color_reset" "${_color_output}${_home_dotfile}${_color_reset}"
@@ -872,10 +905,12 @@ handle_duplicate() {
 # Accept 0 or more arguments. If arguments are provided, files are expected.
 add_dotfiles() {
   local _dotfiles
-  local _dest
+  local _partial_dest
+  local _removed_part
+  local _backup_dotfile
 
   if [ $# -eq 0 ]; then
-    printf "\nEnter the dotfiles names: "
+    printf "\nDotfiles to add: "
     read -r -e -a _dotfiles
   else
     _dotfiles=("$@")
@@ -883,14 +918,59 @@ add_dotfiles() {
 
   for _dotfile in "${_dotfiles[@]}"; do
     get_absolute_path _dotfile
-    _dest="$DOTIG_PATH/home${_dotfile#$HOME}"
-    if [ -f "$_dest" ]; then
-      handle_duplicate "$_dotfile" "$_dest"
+    [ ! -e "$_dotfile" ] && printf "%sError:%s %s is not a file.\n" "$_color_error" "$_color_reset" "$_file" && exit 2
+
+    case $_dotfile in
+      "$XDG_BIN_HOME"*)
+        _partial_dest="home/xdg_bin"
+        _removed_part="$XDG_BIN_HOME"
+        ;;
+      "$XDG_CACHE_HOME"*)
+        _partial_dest="/home/xdg_cache"
+        _removed_part="$XDG_CACHE_HOME"
+        ;;
+      "$XDG_CONFIG_HOME"*)
+        _partial_dest="/home/xdg_config"
+        _removed_part="$XDG_CONFIG_HOME"
+        ;;
+      "$XDG_DATA_HOME"*)
+        _partial_dest="/home/xdg_data"
+        _removed_part="$XDG_DATA_HOME"
+        ;;
+      "$XDG_LIB_HOME"*)
+        _partial_dest="/home/xdg_lib"
+        _removed_part="$XDG_LIB_HOME"
+        ;;
+      "$HOME"*)
+        _partial_dest="/home"
+        _removed_part="$HOME"
+        ;;
+      *)
+        _partial_dest=""
+        _removed_part=""
+        ;;
+    esac
+
+    _backup_dotfile="${DOTIG_PATH}${_partial_dest}${_dotfile#$_removed_part}"
+
+    if [ -e "$_backup_dotfile" ]; then
+      handle_duplicate "$_dotfile" "$_backup_dotfile"
     else
-      mkdir -p "$(dirname "$_dest")"
-      mv "$_dotfile" "$_dest"
-      ln -s "$_dest" "$_dotfile"
-      printf "%sSuccess:%s %s moved and symlink created.\n" "$_color_success" "$_color_reset" "$_dotfile"
+      is_verbose && printf "Creating path if not already present...\n"
+      mkdir -p "$(dirname "$_backup_dotfile")"
+
+      if is_file_in_home "$_dotfile"; then
+        is_verbose && printf "Moving %s to %s...\n" "$_dotfile" "$_backup_dotfile"
+        mv "$_dotfile" "$_backup_dotfile"
+        is_verbose && printf "Symlinking %s to %s...\n" "$_backup_dotfile" "$_dotfile"
+        ln -s "$_backup_dotfile" "$_dotfile"
+        printf "%sSuccess:%s %s moved and symlink created.\n" "$_color_success" "$_color_reset" "$_dotfile"
+      else
+        is_verbose && printf "Copying %s to %s...\n" "$_dotfile" "$_backup_dotfile"
+        cp "$_dotfile" "$_backup_dotfile"
+        printf "%sSuccess:%s %s copied.\n" "$_color_success" "$_color_reset" "$_dotfile"
+        printf "%sWarning:%s Symlink not created. %s is not in $HOME! \n" "$_color_warning" "$_color_reset" "$_dotfile"
+      fi
     fi
   done
 
@@ -899,7 +979,7 @@ add_dotfiles() {
 
 # Find all dotfiles in the backup path excluding submodules.
 # Return a list of files.
-get_backup_dotfiles_list() {
+get_backup_dotfiles() {
   local _find_cmd
   local _exclude_dirs=()
   local _tmp
@@ -922,62 +1002,21 @@ get_backup_dotfiles_list() {
   "${_find_cmd[@]}"
 }
 
-# Execute the action specified by the user in case of of existing symlink with
-# a different target.
-# Argument 1: the file (or symlink) residing in $DOTFILES.
+# Handle existing symlink: check if the symlink target is the expected one or
+# ask user which action to perform.
+# Argument 1: the file (or symlink) residing in the backup path.
 # Argument 2: the symlink residing in $HOME.
-# Argument 3: the symlink target.
-handle_update_target() {
-  [ $# -ne 3 ] && error_unexpected
+handle_target_update() {
+  [ $# -ne 2 ] && error_unexpected
 
   local _file=$1
+  local _file_target
   local _symlink=$2
-  local _target=$3
-  local _extra_info=""
+  local _symlink_target
+  local _extra_info
   local _choice
 
-  [ -h "$_file" ] && _extra_info=" (also a symlink)"
-
-  printf "\n%sWarning:%s A symlink exists but its target does not match your dotfile backup:\n" "$_color_warning" "$_color_reset"
-  printf "* Symlink: %s\n" "${_color_output}${_symlink}${_color_reset}"
-  printf "* Symlink target: %s\n" "${_color_output}${_target}${_color_reset}"
-  printf "* Dotfile backup%s: %s\n" "$_extra_info" "${_color_output}${_file}${_color_reset}"
-
-  printf "How do you want to proceed?\n"
-  printf "%s[1]%s Update the symlink\n" "$_color_choice" "$_color_reset"
-  printf "%s[2]%s Skip this file\n" "$_color_choice" "$_color_reset"
-
-  while true; do
-    printf "Your choice: "
-    read -r _choice
-
-    case $_choice in
-    1)
-      ln -s -f "$file" "$_symlink"
-      printf "%sSuccess:%s %s updated.\n" "$_color_success" "$_color_reset" "$_symlink"
-      break
-      ;;
-    2)
-      printf "\n%sSkipped:%s %s\n" "$_color_warning" "$_color_reset" "$_file"
-      break
-      ;;
-    *) printf "%sError:%s Enter %s[1]%s or %s[2]%s." "$_color_error" "$_color_reset" "$_color_choice" "$_color_reset" "$_color_choice" "$_color_reset" ;;
-    esac
-  done
-}
-
-# Handle existing symlink in backup path: check if the symlink target is the
-# expected one or ask user.
-# Argument 1: the file (or symlink) residing in $DOTFILES.
-# Argument 2: the symlink residing in $HOME.
-# Argument 3: the symlink target.
-handle_target_in_backup_path() {
-  [ $# -ne 3 ] && error_unexpected
-
-  local _file=$1
-  local _symlink=$2
-  local _symlink_target=$3
-  local _choice
+  _symlink_target=$(readlink -f "$_symlink")
 
   if [ "$_symlink_target" = "$_file" ]; then
     if is_verbose; then
@@ -985,7 +1024,36 @@ handle_target_in_backup_path() {
       printf "%sSkipped:%s %s\n" "$_color_warning" "$_color_reset" "$file"
     fi
   else
-    handle_update_target "$_file" "$_symlink" "$_symlink_target"
+    [ -h "$_file" ] && _extra_info=" (also a symlink)" && _file_target=$(readlink -f "$_file")
+
+    printf "\n%sWarning:%s A symlink exists but its target does not match your dotfile backup:\n" "$_color_warning" "$_color_reset"
+    printf "* Symlink: %s\n" "${_color_output}${_symlink}${_color_reset}"
+    printf "* Symlink target: %s\n" "${_color_output}${_target}${_color_reset}"
+    printf "* Backup file%s: %s\n" "$_extra_info" "${_color_output}${_file}${_color_reset}"
+    [ -h "$_file" ] && printf "* Backup target: %s\n" "${_color_output}${_file_target}${_color_reset}"
+
+    printf "How do you want to proceed?\n"
+    printf "%s[1]%s Update the symlink\n" "$_color_choice" "$_color_reset"
+    printf "%s[2]%s Skip this file\n" "$_color_choice" "$_color_reset"
+
+    while true; do
+      printf "Your choice: "
+      read -r _choice
+
+      case $_choice in
+      1)
+        is_verbose && printf "Updating symlink target...\n"
+        ln -s -f "$file" "$_symlink"
+        printf "%sSuccess:%s %s updated.\n" "$_color_success" "$_color_reset" "$_symlink"
+        break
+        ;;
+      2)
+        printf "\n%sSkipped:%s %s\n" "$_color_warning" "$_color_reset" "$_file"
+        break
+        ;;
+      *) printf "%sError:%s Enter %s[1]%s or %s[2]%s." "$_color_error" "$_color_reset" "$_color_choice" "$_color_reset" "$_color_choice" "$_color_reset" ;;
+      esac
+    done
   fi
 }
 
@@ -1019,37 +1087,68 @@ remove_broken_symlinks() {
   rm "$_tmp"
 }
 
-# Create or update all symlinks in $HOME based on the dotfiles in
-# the backup path and remove the broken symlinks.
+# Create or update all symlinks in $HOME based on the dotfiles in the backup
+# path and remove the broken symlinks.
 update_symlinks() {
-  local _symlink
-  local _symlink_target
+  local _backup_dotfile
+  local _dotfile
   local _tmp
 
-  printf "\nCreating symlink...\n"
   _tmp=$(mktemp "${TMPDIR:-/tmp}/dotig.XXXXXX")
-  get_backup_dotfiles_list > "$_tmp"
+  get_backup_dotfiles > "$_tmp"
 
-  while IFS= read -r file <&3; do
-    if [ -h "$HOME${file#$DOTIG_PATH/home}" ]; then
-      _symlink="$HOME${file#$DOTIG_PATH/home}"
-      _symlink_target=$(readlink -f "$_symlink")
-      case $_symlink_target in
-        $DOTIG_PATH/*) handle_target_in_backup_path "$file" "$_symlink" "$_symlink_target" ;;
-        *) handle_update_target "$file" "$_symlink" "$_symlink_target" ;;
-      esac
-    elif [ -f "$HOME${file#$DOTIG_PATH/home}" ]; then
-      printf "\n"
-      handle_duplicate "$HOME${file#$DOTIG_PATH/home}" "$file"
+  while IFS= read -r _backup_dotfile <&3; do
+    case $_backup_dotfile in
+      "${DOTIG_PATH}/home/xdg_bin/"*)
+        _partial_dest="$XDG_BIN_HOME"
+        _removed_part="${DOTIG_PATH}/home/xdg_bin"
+        ;;
+      "${DOTIG_PATH}/home/xdg_cache/"*)
+        _partial_dest="$XDG_CACHE_HOME"
+        _removed_part="${DOTIG_PATH}/home/xdg_cache"
+        ;;
+      "${DOTIG_PATH}/home/xdg_config/"*)
+        _partial_dest="$XDG_CONFIG_HOME"
+        _removed_part="${DOTIG_PATH}/home/xdg_config"
+        ;;
+      "${DOTIG_PATH}/home/xdg_data/"*)
+        _partial_dest="$XDG_DATA_HOME"
+        _removed_part="${DOTIG_PATH}/home/xdg_data"
+        ;;
+      "${DOTIG_PATH}/home/xdg_lib/"*)
+        _partial_dest="$XDG_LIB_HOME"
+        _removed_part="${DOTIG_PATH}/home/xdg_lib"
+        ;;
+      "${DOTIG_PATH}/home/"*)
+        _partial_dest="$HOME"
+        _removed_part="${DOTIG_PATH}/home"
+        ;;
+      *)
+        _partial_dest=""
+        _removed_part="$DOTIG_PATH"
+        ;;
+    esac
+
+    _dotfile="${_partial_dest}${_backup_dotfile#$_removed_part}"
+
+    if is_file_in_home "$_dotfile"; then
+      if [ -h "$_dotfile" ]; then
+        handle_target_update "$_backup_dotfile" "$_dotfile"
+      elif [ -f "$_dotfile" ]; then
+        handle_duplicate "$_dotfile" "$_backup_dotfile"
+      else
+        is_verbose && printf "Creating symlink from %s to %s\n" "$_backup_dotfile" "$_dotfile"
+        ln -s "$_backup_dotfile" "$_dotfile"
+        is_verbose && printf "%sSuccess:%s Symlink created for %s\n" "$_color_success" "$_color_reset" "$_backup_dotfile"
+      fi
     else
-      ln -s "$file" "$HOME/${file#$DOTIG_PATH/home}"
-      is_verbose && printf "%sSuccess:%s Symlink created for %s\n" "$_color_success" "$_color_reset" "$file"
+      printf "%sWarning:%s %s is not in %s. Symlink skipped.\n" "$_color_warning" "$_color_reset" "$_dotfile" "$HOME"
     fi
   done 3< "$_tmp"
 
   rm "$_tmp"
 
-  printf "\n%sSuccess:%s Done. Symlinks have been updated except those that have possibly been manually skipped.\n" "$_color_success" "$_color_reset"
+  printf "\n%sSuccess:%s Done. Symlinks have been updated except those that have possibly been manually skipped or needing administrator rights.\n" "$_color_success" "$_color_reset"
 
   remove_broken_symlinks
 
@@ -1112,8 +1211,9 @@ handle_target_issue() {
 # Replace all symlinks in $HOME whose target is in $DOTFILES with the
 # backup file.
 remove_symlinks() {
+  local _symlink
   local _symlink_target
-  local _expected_target
+  local _backup_dotfile
   local _tmp
 
   printf "\nReplacing symlinks with original files...\n"
@@ -1121,19 +1221,50 @@ remove_symlinks() {
   _tmp=$(mktemp "${TMPDIR:-/tmp}/dotig.XXXXXX")
   find "$HOME" -type l -not \( -path "$DOTIG_PATH/*" -prune \) -print > "$_tmp"
 
-  while IFS= read -r symlink <&3; do
-    _symlink_target=$(readlink "$symlink")
-    case $_symlink_target in
-      $DOTIG_PATH/*)
-        _expected_target="${DOTIG_PATH}/home${symlink#$HOME}"
-        if [ "$_expected_target" = "$_symlink_target" ]; then
-          replace_symlink_with_file "$symlink" "$_expected_target"
-        else
-          handle_target_issue "$symlink" "$_symlink_target" "$_expected_target"
-        fi
-        ;;
-      *) ;;
-    esac
+  while IFS= read -r _symlink <&3; do
+    _symlink_target=$(readlink "$_symlink")
+
+    if is_file_in_backup_path "$_symlink_target"; then
+      case $_symlink_target in
+        "${DOTIG_PATH}/home/xdg_bin/"*)
+          _partial_dest="${DOTIG_PATH}/home/xdg_bin"
+          _removed_part="$XDG_BIN_HOME"
+          ;;
+        "${DOTIG_PATH}/home/xdg_cache/"*)
+          _partial_dest="${DOTIG_PATH}/home/xdg_cache"
+          _removed_part="$XDG_CACHE_HOME"
+          ;;
+        "${DOTIG_PATH}/home/xdg_config/"*)
+          _partial_dest="${DOTIG_PATH}/home/xdg_config"
+          _removed_part="$XDG_CONFIG_HOME"
+          ;;
+        "${DOTIG_PATH}/home/xdg_data/"*)
+          _partial_dest="${DOTIG_PATH}/home/xdg_data"
+          _removed_part="$XDG_DATA_HOME"
+          ;;
+        "${DOTIG_PATH}/home/xdg_lib/"*)
+          _partial_dest="${DOTIG_PATH}/home/xdg_lib"
+          _removed_part="$XDG_LIB_HOME"
+          ;;
+        "${DOTIG_PATH}/home/"*)
+          _partial_dest="${DOTIG_PATH}/home"
+          _removed_part="$HOME"
+          ;;
+        *)
+          _partial_dest="$DOTIG_PATH"
+          _removed_part=""
+          ;;
+      esac
+
+      _backup_dotfile=${_partial_dest}${_symlink#$_removed_part}
+
+      if [ "$_backup_dotfile" = "$_symlink_target" ]; then
+        replace_symlink_with_file "$_symlink" "$_backup_dotfile"
+      else
+        handle_target_issue "$_symlink" "$_symlink_target" "$_backup_dotfile"
+      fi
+    fi
+
   done 3< "$_tmp"
 
   rm "$_tmp"
@@ -1353,6 +1484,7 @@ main() {
   print_logo
   check_requirements
   is_backup_repo_ready
+  set_xdg_paths
   [ $_show_repo_status = "true" ] && get_repo_status
   print_menu
 }
@@ -1379,6 +1511,8 @@ handle_dotig_cli_commands() {
   [ ! -d "$DOTFILES" ] && error_backup_path
   DOTIG_PATH="$DOTFILES"
   _disable_menu="true"
+
+  set_xdg_paths
 
   if [ $# -eq 1 ]; then
     case $1 in
