@@ -122,6 +122,19 @@ is_correct_path() {
   done
 }
 
+# Check if a file is in $HOME.
+# Argument 1: the file to test
+is_file_in_home() {
+  [ $# -eq 0 ] && error_unexpected
+
+  local _file=$1
+
+  case $_file in
+    "$HOME"*) return 0 ;;
+    *) return 1
+  esac
+}
+
 is_verbose() {
   [ "$_verbose" = "true" ]
 }
@@ -308,6 +321,25 @@ get_submodules_path() {
 # Check if the dotfiles backup directory is a Git repository.
 is_git_repo() {
   git -C "$DOTIG_PATH" rev-parse --git-dir > /dev/null 2>&1
+}
+
+###############################################################################
+# XDG Specification
+# Use XDG paths to handle dotfiles and symlinks.
+###############################################################################
+
+# Check if XDG path are set, if not set them.
+set_xdg_paths() {
+  if is_linux; then
+    XDG_BIN_HOME=${XDG_BIN_HOME:-$HOME/.local/bin}
+    XDG_CACHE_HOME=${XDG_CACHE_HOME:-$HOME/.cache}
+    XDG_CONFIG_HOME=${XDG_CONFIG_HOME:-$HOME/.config}
+    XDG_DATA_HOME=${XDG_DATA_HOME:-$HOME/.local/share}
+    XDG_LIB_HOME=${XDG_LIB_HOME:-$HOME/.local/lib}
+  else
+    printf "%sError:%s Only Linux is supported.\n" "$_color_error" "$_color_reset"
+    exit 2
+  fi
 }
 
 ###############################################################################
@@ -764,22 +796,10 @@ get_absolute_path() {
   local _absolute_path
 
   case $_file in
-  /*)
-    [ ! -e "$_file" ] && printf "%sError:%s %s is not a file.\n" "$_color_error" "$_color_reset" "$_file" && exit 2
-    _absolute_path=$_file
-    ;;
-  \~/*)
-    _absolute_path="$HOME/${_file:2}"
-    [ ! -e "$_absolute_path" ] && printf "%sError:%s %s is not a file.\n" "$_color_error" "$_color_reset" "$_absolute_path" && exit 2
-    ;;
-  ./*)
-    _absolute_path="$(pwd)/${_file:2}"
-    [ ! -e "$_absolute_path" ] && printf "%sError:%s %s is not a file.\n" "$_color_error" "$_color_reset" "$_absolute_path" && exit 2
-    ;;
-  *)
-    [ ! -e "$_file" ] && printf "%sError:%s %s is not a file.\n" "$_color_error" "$_color_reset" "$_file" && exit 2
-    _absolute_path="$(pwd)/$_file"
-    ;;
+  /*) _absolute_path=$_file ;;
+  \~/*) _absolute_path="$HOME/${_file:2}" ;;
+  ./*) _absolute_path="$(pwd)/${_file:2}" ;;
+  *) _absolute_path="$(pwd)/$_file" ;;
   esac
 
   eval "$1=$_absolute_path"
@@ -872,10 +892,12 @@ handle_duplicate() {
 # Accept 0 or more arguments. If arguments are provided, files are expected.
 add_dotfiles() {
   local _dotfiles
-  local _dest
+  local _partial_dest
+  local _removed_part
+  local _backup_dotfile
 
   if [ $# -eq 0 ]; then
-    printf "\nEnter the dotfiles names: "
+    printf "\nDotfiles to add: "
     read -r -e -a _dotfiles
   else
     _dotfiles=("$@")
@@ -883,14 +905,59 @@ add_dotfiles() {
 
   for _dotfile in "${_dotfiles[@]}"; do
     get_absolute_path _dotfile
-    _dest="$DOTIG_PATH/home${_dotfile#$HOME}"
-    if [ -f "$_dest" ]; then
-      handle_duplicate "$_dotfile" "$_dest"
+    [ ! -e "$_dotfile" ] && printf "%sError:%s %s is not a file.\n" "$_color_error" "$_color_reset" "$_file" && exit 2
+
+    case $_dotfile in
+      "$XDG_BIN_HOME"*)
+        _partial_dest="home/xdg_bin"
+        _removed_part="$XDG_BIN_HOME"
+        ;;
+      "$XDG_CACHE_HOME"*)
+        _partial_dest="/home/xdg_cache"
+        _removed_part="$XDG_CACHE_HOME"
+        ;;
+      "$XDG_CONFIG_HOME"*)
+        _partial_dest="/home/xdg_config"
+        _removed_part="$XDG_CONFIG_HOME"
+        ;;
+      "$XDG_DATA_HOME"*)
+        _partial_dest="/home/xdg_data"
+        _removed_part="$XDG_DATA_HOME"
+        ;;
+      "$XDG_LIB_HOME"*)
+        _partial_dest="/home/xdg_lib"
+        _removed_part="$XDG_LIB_HOME"
+        ;;
+      "$HOME"*)
+        _partial_dest="/home"
+        _removed_part="$HOME"
+        ;;
+      *)
+        _partial_dest=""
+        _removed_part=""
+        ;;
+    esac
+
+    _backup_dotfile="${DOTIG_PATH}${_partial_dest}${_dotfile#$_removed_part}"
+
+    if [ -e "$_backup_dotfile" ]; then
+      handle_duplicate "$_dotfile" "$_backup_dotfile"
     else
-      mkdir -p "$(dirname "$_dest")"
-      mv "$_dotfile" "$_dest"
-      ln -s "$_dest" "$_dotfile"
-      printf "%sSuccess:%s %s moved and symlink created.\n" "$_color_success" "$_color_reset" "$_dotfile"
+      is_verbose && printf "Creating path if not already present...\n"
+      mkdir -p "$(dirname "$_backup_dotfile")"
+
+      if is_file_in_home "$_dotfile"; then
+        is_verbose && printf "Moving %s to %s...\n" "$_dotfile" "$_backup_dotfile"
+        mv "$_dotfile" "$_backup_dotfile"
+        is_verbose && printf "Symlinking %s to %s...\n" "$_backup_dotfile" "$_dotfile"
+        ln -s "$_backup_dotfile" "$_dotfile"
+        printf "%sSuccess:%s %s moved and symlink created.\n" "$_color_success" "$_color_reset" "$_dotfile"
+      else
+        is_verbose && printf "Copying %s to %s...\n" "$_dotfile" "$_backup_dotfile"
+        cp "$_dotfile" "$_backup_dotfile"
+        printf "%sSuccess:%s %s copied.\n" "$_color_success" "$_color_reset" "$_dotfile"
+        printf "%sWarning:%s Symlink not created. %s is not in $HOME! \n" "$_color_warning" "$_color_reset" "$_dotfile"
+      fi
     fi
   done
 
@@ -1353,6 +1420,7 @@ main() {
   print_logo
   check_requirements
   is_backup_repo_ready
+  set_xdg_paths
   [ $_show_repo_status = "true" ] && get_repo_status
   print_menu
 }
@@ -1379,6 +1447,8 @@ handle_dotig_cli_commands() {
   [ ! -d "$DOTFILES" ] && error_backup_path
   DOTIG_PATH="$DOTFILES"
   _disable_menu="true"
+
+  set_xdg_paths
 
   if [ $# -eq 1 ]; then
     case $1 in
