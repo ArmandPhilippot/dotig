@@ -850,7 +850,7 @@ handle_duplicate() {
   local _home_dotfile=$1
   local _backup_dotfile=$2
 
-  printf "%sWarning:%s A file with the same name already exists.\n" "$_color_warning" "$_color_reset"
+  printf "\n%sWarning:%s A file with the same name already exists.\n" "$_color_warning" "$_color_reset"
 
   [ -h "$_backup_dotfile" ] && printf "%sWarning:%s %s is a symlink.\n" "$_color_warning" "$_color_reset" "${_color_output}${_backup_dotfile}${_color_reset}"
   [ -h "$_home_dotfile" ] && printf "%sWarning:%s %s is a symlink.\n" "$_color_warning" "$_color_reset" "${_color_output}${_home_dotfile}${_color_reset}"
@@ -1074,33 +1074,68 @@ remove_broken_symlinks() {
   rm "$_tmp"
 }
 
-# Create or update all symlinks in $HOME based on the dotfiles in
-# the backup path and remove the broken symlinks.
+# Create or update all symlinks in $HOME based on the dotfiles in the backup
+# path and remove the broken symlinks.
 update_symlinks() {
-  local _symlink
+  local _backup_dotfile
+  local _dotfile
   local _tmp
 
-  printf "\nCreating symlink...\n"
   _tmp=$(mktemp "${TMPDIR:-/tmp}/dotig.XXXXXX")
   get_backup_dotfiles > "$_tmp"
 
-  while IFS= read -r file <&3; do
-    if [ -h "$HOME${file#$DOTIG_PATH/home}" ]; then
-      _symlink="$HOME${file#$DOTIG_PATH/home}"
+  while IFS= read -r _backup_dotfile <&3; do
+    case $_backup_dotfile in
+      "${DOTIG_PATH}/home/xdg_bin/"*)
+        _partial_dest="$XDG_BIN_HOME"
+        _removed_part="${DOTIG_PATH}/home/xdg_bin"
+        ;;
+      "${DOTIG_PATH}/home/xdg_cache/"*)
+        _partial_dest="$XDG_CACHE_HOME"
+        _removed_part="${DOTIG_PATH}/home/xdg_cache"
+        ;;
+      "${DOTIG_PATH}/home/xdg_config/"*)
+        _partial_dest="$XDG_CONFIG_HOME"
+        _removed_part="${DOTIG_PATH}/home/xdg_config"
+        ;;
+      "${DOTIG_PATH}/home/xdg_data/"*)
+        _partial_dest="$XDG_DATA_HOME"
+        _removed_part="${DOTIG_PATH}/home/xdg_data"
+        ;;
+      "${DOTIG_PATH}/home/xdg_lib/"*)
+        _partial_dest="$XDG_LIB_HOME"
+        _removed_part="${DOTIG_PATH}/home/xdg_lib"
+        ;;
+      "${DOTIG_PATH}/home/"*)
+        _partial_dest="$HOME"
+        _removed_part="${DOTIG_PATH}/home"
+        ;;
+      *)
+        _partial_dest=""
+        _removed_part="$DOTIG_PATH"
+        ;;
+    esac
 
-      handle_target_update "$file" "$_symlink"
-    elif [ -f "$HOME${file#$DOTIG_PATH/home}" ]; then
-      printf "\n"
-      handle_duplicate "$HOME${file#$DOTIG_PATH/home}" "$file"
+    _dotfile="${_partial_dest}${_backup_dotfile#$_removed_part}"
+
+    if is_file_in_home "$_dotfile"; then
+      if [ -h "$_dotfile" ]; then
+        handle_target_update "$_backup_dotfile" "$_dotfile"
+      elif [ -f "$_dotfile" ]; then
+        handle_duplicate "$_dotfile" "$_backup_dotfile"
+      else
+        is_verbose && printf "Creating symlink from %s to %s\n" "$_backup_dotfile" "$_dotfile"
+        ln -s "$_backup_dotfile" "$_dotfile"
+        is_verbose && printf "%sSuccess:%s Symlink created for %s\n" "$_color_success" "$_color_reset" "$_backup_dotfile"
+      fi
     else
-      ln -s "$file" "$HOME/${file#$DOTIG_PATH/home}"
-      is_verbose && printf "%sSuccess:%s Symlink created for %s\n" "$_color_success" "$_color_reset" "$file"
+      printf "%sWarning:%s %s is not in %s. Symlink skipped.\n" "$_color_warning" "$_color_reset" "$_dotfile" "$HOME"
     fi
   done 3< "$_tmp"
 
   rm "$_tmp"
 
-  printf "\n%sSuccess:%s Done. Symlinks have been updated except those that have possibly been manually skipped.\n" "$_color_success" "$_color_reset"
+  printf "\n%sSuccess:%s Done. Symlinks have been updated except those that have possibly been manually skipped or needing administrator rights.\n" "$_color_success" "$_color_reset"
 
   remove_broken_symlinks
 
