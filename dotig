@@ -966,7 +966,7 @@ add_dotfiles() {
 
 # Find all dotfiles in the backup path excluding submodules.
 # Return a list of files.
-get_backup_dotfiles_list() {
+get_backup_dotfiles() {
   local _find_cmd
   local _exclude_dirs=()
   local _tmp
@@ -989,62 +989,21 @@ get_backup_dotfiles_list() {
   "${_find_cmd[@]}"
 }
 
-# Execute the action specified by the user in case of of existing symlink with
-# a different target.
-# Argument 1: the file (or symlink) residing in $DOTFILES.
+# Handle existing symlink: check if the symlink target is the expected one or
+# ask user which action to perform.
+# Argument 1: the file (or symlink) residing in the backup path.
 # Argument 2: the symlink residing in $HOME.
-# Argument 3: the symlink target.
-handle_update_target() {
-  [ $# -ne 3 ] && error_unexpected
+handle_target_update() {
+  [ $# -ne 2 ] && error_unexpected
 
   local _file=$1
+  local _file_target
   local _symlink=$2
-  local _target=$3
-  local _extra_info=""
+  local _symlink_target
+  local _extra_info
   local _choice
 
-  [ -h "$_file" ] && _extra_info=" (also a symlink)"
-
-  printf "\n%sWarning:%s A symlink exists but its target does not match your dotfile backup:\n" "$_color_warning" "$_color_reset"
-  printf "* Symlink: %s\n" "${_color_output}${_symlink}${_color_reset}"
-  printf "* Symlink target: %s\n" "${_color_output}${_target}${_color_reset}"
-  printf "* Dotfile backup%s: %s\n" "$_extra_info" "${_color_output}${_file}${_color_reset}"
-
-  printf "How do you want to proceed?\n"
-  printf "%s[1]%s Update the symlink\n" "$_color_choice" "$_color_reset"
-  printf "%s[2]%s Skip this file\n" "$_color_choice" "$_color_reset"
-
-  while true; do
-    printf "Your choice: "
-    read -r _choice
-
-    case $_choice in
-    1)
-      ln -s -f "$file" "$_symlink"
-      printf "%sSuccess:%s %s updated.\n" "$_color_success" "$_color_reset" "$_symlink"
-      break
-      ;;
-    2)
-      printf "\n%sSkipped:%s %s\n" "$_color_warning" "$_color_reset" "$_file"
-      break
-      ;;
-    *) printf "%sError:%s Enter %s[1]%s or %s[2]%s." "$_color_error" "$_color_reset" "$_color_choice" "$_color_reset" "$_color_choice" "$_color_reset" ;;
-    esac
-  done
-}
-
-# Handle existing symlink in backup path: check if the symlink target is the
-# expected one or ask user.
-# Argument 1: the file (or symlink) residing in $DOTFILES.
-# Argument 2: the symlink residing in $HOME.
-# Argument 3: the symlink target.
-handle_target_in_backup_path() {
-  [ $# -ne 3 ] && error_unexpected
-
-  local _file=$1
-  local _symlink=$2
-  local _symlink_target=$3
-  local _choice
+  _symlink_target=$(readlink -f "$_symlink")
 
   if [ "$_symlink_target" = "$_file" ]; then
     if is_verbose; then
@@ -1052,7 +1011,36 @@ handle_target_in_backup_path() {
       printf "%sSkipped:%s %s\n" "$_color_warning" "$_color_reset" "$file"
     fi
   else
-    handle_update_target "$_file" "$_symlink" "$_symlink_target"
+    [ -h "$_file" ] && _extra_info=" (also a symlink)" && _file_target=$(readlink -f "$_file")
+
+    printf "\n%sWarning:%s A symlink exists but its target does not match your dotfile backup:\n" "$_color_warning" "$_color_reset"
+    printf "* Symlink: %s\n" "${_color_output}${_symlink}${_color_reset}"
+    printf "* Symlink target: %s\n" "${_color_output}${_target}${_color_reset}"
+    printf "* Backup file%s: %s\n" "$_extra_info" "${_color_output}${_file}${_color_reset}"
+    [ -h "$_file" ] && printf "* Backup target: %s\n" "${_color_output}${_file_target}${_color_reset}"
+
+    printf "How do you want to proceed?\n"
+    printf "%s[1]%s Update the symlink\n" "$_color_choice" "$_color_reset"
+    printf "%s[2]%s Skip this file\n" "$_color_choice" "$_color_reset"
+
+    while true; do
+      printf "Your choice: "
+      read -r _choice
+
+      case $_choice in
+      1)
+        is_verbose && printf "Updating symlink target...\n"
+        ln -s -f "$file" "$_symlink"
+        printf "%sSuccess:%s %s updated.\n" "$_color_success" "$_color_reset" "$_symlink"
+        break
+        ;;
+      2)
+        printf "\n%sSkipped:%s %s\n" "$_color_warning" "$_color_reset" "$_file"
+        break
+        ;;
+      *) printf "%sError:%s Enter %s[1]%s or %s[2]%s." "$_color_error" "$_color_reset" "$_color_choice" "$_color_reset" "$_color_choice" "$_color_reset" ;;
+      esac
+    done
   fi
 }
 
@@ -1090,21 +1078,17 @@ remove_broken_symlinks() {
 # the backup path and remove the broken symlinks.
 update_symlinks() {
   local _symlink
-  local _symlink_target
   local _tmp
 
   printf "\nCreating symlink...\n"
   _tmp=$(mktemp "${TMPDIR:-/tmp}/dotig.XXXXXX")
-  get_backup_dotfiles_list > "$_tmp"
+  get_backup_dotfiles > "$_tmp"
 
   while IFS= read -r file <&3; do
     if [ -h "$HOME${file#$DOTIG_PATH/home}" ]; then
       _symlink="$HOME${file#$DOTIG_PATH/home}"
-      _symlink_target=$(readlink -f "$_symlink")
-      case $_symlink_target in
-        $DOTIG_PATH/*) handle_target_in_backup_path "$file" "$_symlink" "$_symlink_target" ;;
-        *) handle_update_target "$file" "$_symlink" "$_symlink_target" ;;
-      esac
+
+      handle_target_update "$file" "$_symlink"
     elif [ -f "$HOME${file#$DOTIG_PATH/home}" ]; then
       printf "\n"
       handle_duplicate "$HOME${file#$DOTIG_PATH/home}" "$file"
