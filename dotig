@@ -514,21 +514,34 @@ is_valid_remote_url() {
   esac
 }
 
+# Check if the provided URL is an existing remote.
+# Argument 1: the URL to test.
+is_existing_remote() {
+  local _remote=$1
+
+  git ls-remote "$_remote" > /dev/null 2>&1
+}
+
 # Check if the provided remote URL is a remote repository.
 # Argument 1: the URL to test.
-is_remote_exists() {
+is_valid_remote() {
   [ $# -ne 1 ] && error_unexpected
 
   local -n _valid_remote=$1
 
   printf "\nChecking if this URL exists. Your SSH passphrase can be requested.\n"
 
-  if ! git ls-remote "$_valid_remote" > /dev/null 2>&1; then
-    while ! git ls-remote "$_valid_remote" > /dev/null 2>&1; do
+  if is_valid_remote_url "$_valid_remote"; then
+    if ! is_existing_remote "$_valid_remote"; then
       printf "%sError:%s This remote URL does not exist.\n" "$_color_error" "$_color_reset"
-      printf "Enter a valid remote URL: "
-      read -r _valid_remote
-    done
+      return 1
+    fi
+
+    return 0
+  else
+    printf "%sError:%s The remote URL is not valid. URL must starts with 'https' or 'git@'.\n" "$_color_error" "$_color_reset"
+
+    return 1
   fi
 }
 
@@ -540,14 +553,13 @@ set_remote() {
   printf "Please enter your remote address: "
   read -r _remote
 
-  while ! is_valid_remote_url "$_remote"; do
-    printf "\n%sError:%s The remote URL is not valid. URL must starts with 'https' or 'git@'.\n" "$_color_error" "$_color_reset"
+  while ! is_valid_remote _remote; do
     printf "Please enter a valid remote address: "
     read -r _remote
   done
 
-  is_remote_exists _remote
   git -C "$DOTIG_PATH" remote add origin "$_remote"
+
   if is_verbose; then
     printf "%sSuccess:%s Remote set.\n" "$_color_success" "$_color_reset"
   fi
