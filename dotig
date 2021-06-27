@@ -135,6 +135,19 @@ is_file_in_home() {
   esac
 }
 
+# Check if a file is in $DOTIG_PATH.
+# Argument 1: the file to test
+is_file_in_backup_path() {
+  [ $# -eq 0 ] && error_unexpected
+
+  local _file=$1
+
+  case $_file in
+    "$DOTIG_PATH"*) return 0 ;;
+    *) return 1
+  esac
+}
+
 is_verbose() {
   [ "$_verbose" = "true" ]
 }
@@ -1198,8 +1211,9 @@ handle_target_issue() {
 # Replace all symlinks in $HOME whose target is in $DOTFILES with the
 # backup file.
 remove_symlinks() {
+  local _symlink
   local _symlink_target
-  local _expected_target
+  local _backup_dotfile
   local _tmp
 
   printf "\nReplacing symlinks with original files...\n"
@@ -1207,19 +1221,50 @@ remove_symlinks() {
   _tmp=$(mktemp "${TMPDIR:-/tmp}/dotig.XXXXXX")
   find "$HOME" -type l -not \( -path "$DOTIG_PATH/*" -prune \) -print > "$_tmp"
 
-  while IFS= read -r symlink <&3; do
-    _symlink_target=$(readlink "$symlink")
-    case $_symlink_target in
-      $DOTIG_PATH/*)
-        _expected_target="${DOTIG_PATH}/home${symlink#$HOME}"
-        if [ "$_expected_target" = "$_symlink_target" ]; then
-          replace_symlink_with_file "$symlink" "$_expected_target"
-        else
-          handle_target_issue "$symlink" "$_symlink_target" "$_expected_target"
-        fi
-        ;;
-      *) ;;
-    esac
+  while IFS= read -r _symlink <&3; do
+    _symlink_target=$(readlink "$_symlink")
+
+    if is_file_in_backup_path "$_symlink_target"; then
+      case $_symlink_target in
+        "${DOTIG_PATH}/home/xdg_bin/"*)
+          _partial_dest="${DOTIG_PATH}/home/xdg_bin"
+          _removed_part="$XDG_BIN_HOME"
+          ;;
+        "${DOTIG_PATH}/home/xdg_cache/"*)
+          _partial_dest="${DOTIG_PATH}/home/xdg_cache"
+          _removed_part="$XDG_CACHE_HOME"
+          ;;
+        "${DOTIG_PATH}/home/xdg_config/"*)
+          _partial_dest="${DOTIG_PATH}/home/xdg_config"
+          _removed_part="$XDG_CONFIG_HOME"
+          ;;
+        "${DOTIG_PATH}/home/xdg_data/"*)
+          _partial_dest="${DOTIG_PATH}/home/xdg_data"
+          _removed_part="$XDG_DATA_HOME"
+          ;;
+        "${DOTIG_PATH}/home/xdg_lib/"*)
+          _partial_dest="${DOTIG_PATH}/home/xdg_lib"
+          _removed_part="$XDG_LIB_HOME"
+          ;;
+        "${DOTIG_PATH}/home/"*)
+          _partial_dest="${DOTIG_PATH}/home"
+          _removed_part="$HOME"
+          ;;
+        *)
+          _partial_dest="$DOTIG_PATH"
+          _removed_part=""
+          ;;
+      esac
+
+      _backup_dotfile=${_partial_dest}${_symlink#$_removed_part}
+
+      if [ "$_backup_dotfile" = "$_symlink_target" ]; then
+        replace_symlink_with_file "$_symlink" "$_backup_dotfile"
+      else
+        handle_target_issue "$_symlink" "$_symlink_target" "$_backup_dotfile"
+      fi
+    fi
+
   done 3< "$_tmp"
 
   rm "$_tmp"
