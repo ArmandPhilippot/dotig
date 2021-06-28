@@ -1013,7 +1013,7 @@ handle_target_update() {
 
     printf "\n%sWarning:%s A symlink exists but its target does not match your dotfile backup:\n" "$_color_warning" "$_color_reset"
     printf "* Symlink: %s\n" "${_color_output}${_symlink}${_color_reset}"
-    printf "* Symlink target: %s\n" "${_color_output}${_target}${_color_reset}"
+    printf "* Symlink target: %s\n" "${_color_output}${_symlink_target}${_color_reset}"
     printf "* Backup file%s: %s\n" "$_extra_info" "${_color_output}${_file}${_color_reset}"
     [ -h "$_file" ] && printf "* Backup target: %s\n" "${_color_output}${_file_target}${_color_reset}"
 
@@ -1028,7 +1028,7 @@ handle_target_update() {
       case $_choice in
       1)
         is_verbose && printf "Updating symlink target...\n"
-        ln -s -f "$file" "$_symlink"
+        ln -s -f "$_file" "$_symlink"
         printf "%sSuccess:%s %s updated.\n" "$_color_success" "$_color_reset" "$_symlink"
         break
         ;;
@@ -1123,6 +1123,7 @@ update_symlinks() {
         handle_duplicate "$_dotfile" "$_backup_dotfile"
       else
         is_verbose && printf "Creating symlink from %s to %s\n" "$_backup_dotfile" "$_dotfile"
+        mkdir -p "$(dirname "$_dotfile")"
         ln -s "$_backup_dotfile" "$_dotfile"
         is_verbose && printf "%sSuccess:%s Symlink created for %s\n" "$_color_success" "$_color_reset" "$_backup_dotfile"
       fi
