@@ -80,17 +80,37 @@ print_logo() {
   printf "%s\n\n" "$DOTIG_LOGO"
 }
 
+# Return the absolute path.
+# Argument 1: a path to convert. Also used to store the absolute path.
+get_absolute_path() {
+  [ $# -ne 1 ] && error_unexpected
+
+  local -n _file=$1
+  local _absolute_path
+
+  case $_file in
+  /*) _absolute_path=$_file ;;
+  \~/*) _absolute_path="$HOME/${_file:2}" ;;
+  ./*) _absolute_path="$(pwd)/${_file:2}" ;;
+  *) _absolute_path="$(pwd)/$_file" ;;
+  esac
+
+  eval "$1=$_absolute_path"
+}
+
 # Prompt user to define an existing directory path.
 # Return the entered path.
 set_path() {
   local _path
   printf "Set the path: " >&2
-  read -r _path
+  read -r -e _path
+  get_absolute_path _path
 
   while [ ! -d "$_path" ]; do
     printf "%sError:%s %s is not a directory.\n" "$_color_error" "$_color_reset" "${_color_output}${_path}${_color_reset}"
     printf "Please enter a valid path: "
-    read -r _path
+    read -r -e _path
+    get_absolute_path _path
   done
 
   eval "$1=$_path"
@@ -784,24 +804,6 @@ check_dotig_updates() {
 # Symlinking options
 # Main feature of Dotig: handle backup of dotfiles and symlinking.
 ###############################################################################
-
-# Return the absolute path.
-# Argument 1: a path to convert. Also used to store the absolute path.
-get_absolute_path() {
-  [ $# -ne 1 ] && error_unexpected
-
-  local -n _file=$1
-  local _absolute_path
-
-  case $_file in
-  /*) _absolute_path=$_file ;;
-  \~/*) _absolute_path="$HOME/${_file:2}" ;;
-  ./*) _absolute_path="$(pwd)/${_file:2}" ;;
-  *) _absolute_path="$(pwd)/$_file" ;;
-  esac
-
-  eval "$1=$_absolute_path"
-}
 
 # Display the diff between two files.
 # Argument 1: the file residing in $HOME.
