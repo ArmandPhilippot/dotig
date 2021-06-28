@@ -103,11 +103,10 @@ is_correct_path() {
   [ $# -ne 1 ] && error_unexpected
 
   local _validation
-  local _valid_path
-  local -n _path=$1
+  local -n _valid_path=$1
 
   while true; do
-    printf "Is %s%s%s correct? %s[y/n]%s " "$_color_output" "$_path" "$_color_reset" "$_color_choice" "$_color_reset"
+    printf "Is %s%s%s correct? %s[y/n]%s " "$_color_output" "$_valid_path" "$_color_reset" "$_color_choice" "$_color_reset"
     read -r _validation
     case $_validation in
     [yY])
@@ -115,7 +114,6 @@ is_correct_path() {
       ;;
     [nN])
       set_path _valid_path
-      _path=$_valid_path
       ;;
     *) printf "%sError:%s please enter %s[y]%ses or %s[n]%so." "$_color_error" "$_color_reset" "$_color_choice" "$_color_reset" "$_color_choice" "$_color_reset" ;;
     esac
@@ -435,18 +433,6 @@ check_requirements() {
 # Check if $DOTFILES is defined and if it is a repo. If not, set both.
 ###############################################################################
 
-# Set the backup directory path and ask if the input is correct.
-# Require 1 argument to store the path.
-# Return the path to use.
-set_backup_path() {
-  local _path
-
-  set_path _path
-  is_correct_path _path
-
-  eval "$1=$_path"
-}
-
 # Check if $DOTFILES is set and contains the correct backup path, if not set it.
 # Require 1 argument to store the path.
 # Return the path to use.
@@ -458,10 +444,12 @@ check_backup_path() {
 
   if [ ! "$DOTFILES" ]; then
     printf "%sWarning:%s The \$DOTFILES variable is not set.\n" "$_color_warning" "$_color_reset"
-    set_backup_path _backup_path
+    set_path _backup_path
+    is_correct_path _backup_path
   elif [ ! -d "$DOTFILES" ]; then
     printf "%sWarning:%s The \$DOTFILES variable does not seem to match a directory.\n" "$_color_warning" "$_color_reset"
-    set_backup_path _backup_path
+    set_path _backup_path
+    is_correct_path _backup_path
   else
     is_verbose && printf "%sSuccess:%s Found \$DOTFILES variable.\n" "$_color_success" "$_color_reset"
     _backup_path=$DOTFILES
