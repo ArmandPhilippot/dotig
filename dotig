@@ -302,7 +302,7 @@ get_unpushed_commits() {
   _current_branch=$(get_current_branch)
   _upstream_branch=$(get_upstream_branch)
 
-  git -C "$DOTIG_PATH" log --oneline "$_upstream_branch"/"$_current_branch"..HEAD
+  [ "$_local_commit" ] &&  git -C "$DOTIG_PATH" log --oneline "$_upstream_branch"/"$_current_branch"..HEAD
 }
 
 # Check if the repo has Git submodules.
