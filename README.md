@@ -144,9 +144,17 @@ However, for now, as you can see in [Requirements](#requirements), the compatibi
 
 ## Disclaimer
 
+### Compatibility
+
 I have only tested on Manjaro Linux 21, Debian 10, Ubuntu 20 and Fedora 34. So:
 * maybe there are some requirements not listed
 * a different behavior is possible depending on your distribution and the version of the tools used (options can be different or missing)
+
+### Migration
+
+Dotig does not manage migration from or to another tool. So, if your dotfiles repository already contains some paths you will have to adjust the paths manually to keep your repo clean.
+
+**For example:** if you have a `$DOTFILES/.config/nano/nanorc`, you may want to change the path to `$DOTFILES/home/xdg_config/nano/nanorc` (and vice versa if you want to switch from Dotig to another tool).
 
 ## License
 
