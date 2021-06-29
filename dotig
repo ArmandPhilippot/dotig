@@ -373,6 +373,7 @@ set_xdg_paths() {
     XDG_CONFIG_HOME=${XDG_CONFIG_HOME:-$HOME/.config}
     XDG_DATA_HOME=${XDG_DATA_HOME:-$HOME/.local/share}
     XDG_LIB_HOME=${XDG_LIB_HOME:-$HOME/.local/lib}
+    XDG_STATE_HOME=${XDG_STATE_HOME:-$HOME/.local/state}
   else
     printf "%sError:%s Only Linux is supported.\n" "$_color_error" "$_color_reset"
     exit 2
@@ -942,6 +943,10 @@ add_dotfiles() {
         _partial_dest="/home/xdg_lib"
         _removed_part="$XDG_LIB_HOME"
         ;;
+      "$XDG_STATE_HOME"*)
+        _partial_dest="/home/xdg_state"
+        _removed_part="$XDG_STATE_HOME"
+        ;;
       "$HOME"*)
         _partial_dest="/home"
         _removed_part="$HOME"
@@ -1125,6 +1130,10 @@ update_symlinks() {
         _partial_dest="$XDG_LIB_HOME"
         _removed_part="${DOTIG_PATH}home/xdg_lib"
         ;;
+      "${DOTIG_PATH}home/xdg_state/"*)
+        _partial_dest="$XDG_STATE_HOME"
+        _removed_part="${DOTIG_PATH}home/xdg_state"
+        ;;
       "${DOTIG_PATH}home/"*)
         _partial_dest="$HOME"
         _removed_part="${DOTIG_PATH}home"
@@ -1251,6 +1260,10 @@ remove_symlinks() {
       "${DOTIG_PATH}home/xdg_lib/"*)
         _partial_dest="${DOTIG_PATH}home/xdg_lib"
         _removed_part="$XDG_LIB_HOME"
+        ;;
+      "${DOTIG_PATH}home/xdg_state/"*)
+        _partial_dest="${DOTIG_PATH}home/xdg_state"
+        _removed_part="$XDG_STATE_HOME"
         ;;
       "${DOTIG_PATH}home/"*)
         _partial_dest="${DOTIG_PATH}home"
