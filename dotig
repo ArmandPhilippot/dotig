@@ -89,11 +89,6 @@ get_absolute_path() {
   local _absolute_path
 
   case $_file in
-    */) : ;;
-    *) _file="${_file}/"
-  esac
-
-  case $_file in
   /*) _absolute_path=$_file ;;
   \~/*) _absolute_path="$HOME/${_file:2}" ;;
   ./*) _absolute_path="$(pwd)/${_file:2}" ;;
@@ -117,6 +112,11 @@ set_path() {
     read -r -e _path
     get_absolute_path _path
   done
+
+  case $_path in
+    */) : ;;
+    *) _path="${_path}/"
+  esac
 
   eval "$1=$_path"
 }
@@ -479,6 +479,12 @@ check_backup_path() {
     is_verbose && printf "%sSuccess:%s Found \$DOTFILES variable.\n" "$_color_success" "$_color_reset"
     _backup_path=$DOTFILES
     get_absolute_path _backup_path
+
+    case $_backup_path in
+      */) : ;;
+      *) _backup_path="${_backup_path}/"
+    esac
+
     is_correct_path _backup_path
   fi
 
