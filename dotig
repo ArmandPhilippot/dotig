@@ -4,7 +4,7 @@
 # A dotfiles manager to quickly setup your machine & synchronize your dotfiles
 # with Git.
 #
-# Requirements: Git and GNU Coreutils.
+# Requirements: Git, GNU/Linux, GNU Coreutils and curl.
 # Tested with: Manjaro 21, Debian 10, Ubuntu 20 and Fedora 34.
 # Author: Armand Philippot <https://www.armandphilippot.com/>
 # URL: https://github.com/ArmandPhilippot/dotig
@@ -410,6 +410,11 @@ is_git_installed() {
   [ -x "$(command -v git)" ]
 }
 
+# Check if curl is installed.
+is_curl_installed() {
+  [ -x "$(command -v curl)" ]
+}
+
 # Check if the commands required by the script are available.
 check_commands() {
   is_verbose && printf "Checking installed programs...\n"
@@ -423,6 +428,14 @@ check_commands() {
     printf "Please install it before using this program.\n"
     printf "Exit.\n"
     exit 1
+  fi
+
+  if is_curl_installed; then
+    if is_verbose; then
+      printf "%sSuccess:%s curl is installed.\n" "$_color_success" "$_color_reset"
+    fi
+  else
+    printf "%sWarning:%s curl is needed to check for Dotig update. Please install it if you want to use this feature.\n" "$_color_warning" "$_color_reset"
   fi
 }
 
@@ -771,6 +784,11 @@ check_dotig_updates() {
   local _download_zip
   local _download_link
   local _not_found
+
+  if ! is_curl_installed; then
+    printf "\n%sError:%s curl is needed to check for Dotig update. Please install it.\n" "$_color_error" "$_color_reset"
+    return_menu
+  fi
 
   _latest_release=$(get_latest_release)
   _not_found=$(printf "%s" "$_latest_release" | { grep -Po '"message": "Not Found"' || true; })
