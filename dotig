@@ -89,6 +89,11 @@ get_absolute_path() {
   local _absolute_path
 
   case $_file in
+    */) : ;;
+    *) _file="${_file}/"
+  esac
+
+  case $_file in
   /*) _absolute_path=$_file ;;
   \~/*) _absolute_path="$HOME/${_file:2}" ;;
   ./*) _absolute_path="$(pwd)/${_file:2}" ;;
@@ -473,6 +478,7 @@ check_backup_path() {
   else
     is_verbose && printf "%sSuccess:%s Found \$DOTFILES variable.\n" "$_color_success" "$_color_reset"
     _backup_path=$DOTFILES
+    get_absolute_path _backup_path
     is_correct_path _backup_path
   fi
 
@@ -982,7 +988,7 @@ get_backup_dotfiles() {
   _find_cmd=( find "$DOTIG_PATH" -mindepth 2 \( -type f -o -type l \) )
 
   for _exclude_dir in "${_exclude_dirs[@]}"; do
-    _find_cmd+=( -not \( -path "$DOTIG_PATH/${_exclude_dir}/*" -prune \) )
+    _find_cmd+=( -not \( -path "$DOTIG_PATH${_exclude_dir}/*" -prune \) )
   done
   _find_cmd+=( -print )
 
@@ -1086,29 +1092,29 @@ update_symlinks() {
 
   while IFS= read -r _backup_dotfile <&3; do
     case $_backup_dotfile in
-      "${DOTIG_PATH}/home/xdg_bin/"*)
+      "${DOTIG_PATH}home/xdg_bin/"*)
         _partial_dest="$XDG_BIN_HOME"
-        _removed_part="${DOTIG_PATH}/home/xdg_bin"
+        _removed_part="${DOTIG_PATH}home/xdg_bin"
         ;;
-      "${DOTIG_PATH}/home/xdg_cache/"*)
+      "${DOTIG_PATH}home/xdg_cache/"*)
         _partial_dest="$XDG_CACHE_HOME"
-        _removed_part="${DOTIG_PATH}/home/xdg_cache"
+        _removed_part="${DOTIG_PATH}home/xdg_cache"
         ;;
-      "${DOTIG_PATH}/home/xdg_config/"*)
+      "${DOTIG_PATH}home/xdg_config/"*)
         _partial_dest="$XDG_CONFIG_HOME"
-        _removed_part="${DOTIG_PATH}/home/xdg_config"
+        _removed_part="${DOTIG_PATH}home/xdg_config"
         ;;
-      "${DOTIG_PATH}/home/xdg_data/"*)
+      "${DOTIG_PATH}home/xdg_data/"*)
         _partial_dest="$XDG_DATA_HOME"
-        _removed_part="${DOTIG_PATH}/home/xdg_data"
+        _removed_part="${DOTIG_PATH}home/xdg_data"
         ;;
-      "${DOTIG_PATH}/home/xdg_lib/"*)
+      "${DOTIG_PATH}home/xdg_lib/"*)
         _partial_dest="$XDG_LIB_HOME"
-        _removed_part="${DOTIG_PATH}/home/xdg_lib"
+        _removed_part="${DOTIG_PATH}home/xdg_lib"
         ;;
-      "${DOTIG_PATH}/home/"*)
+      "${DOTIG_PATH}home/"*)
         _partial_dest="$HOME"
-        _removed_part="${DOTIG_PATH}/home"
+        _removed_part="${DOTIG_PATH}home"
         ;;
       *)
         _partial_dest=""
@@ -1213,28 +1219,28 @@ remove_symlinks() {
     _symlink_target=$(readlink "$_symlink")
 
     case $_symlink_target in
-      "${DOTIG_PATH}/home/xdg_bin/"*)
-        _partial_dest="${DOTIG_PATH}/home/xdg_bin"
+      "${DOTIG_PATH}home/xdg_bin/"*)
+        _partial_dest="${DOTIG_PATH}home/xdg_bin"
         _removed_part="$XDG_BIN_HOME"
         ;;
-      "${DOTIG_PATH}/home/xdg_cache/"*)
-        _partial_dest="${DOTIG_PATH}/home/xdg_cache"
+      "${DOTIG_PATH}home/xdg_cache/"*)
+        _partial_dest="${DOTIG_PATH}home/xdg_cache"
         _removed_part="$XDG_CACHE_HOME"
         ;;
-      "${DOTIG_PATH}/home/xdg_config/"*)
-        _partial_dest="${DOTIG_PATH}/home/xdg_config"
+      "${DOTIG_PATH}home/xdg_config/"*)
+        _partial_dest="${DOTIG_PATH}home/xdg_config"
         _removed_part="$XDG_CONFIG_HOME"
         ;;
-      "${DOTIG_PATH}/home/xdg_data/"*)
-        _partial_dest="${DOTIG_PATH}/home/xdg_data"
+      "${DOTIG_PATH}home/xdg_data/"*)
+        _partial_dest="${DOTIG_PATH}home/xdg_data"
         _removed_part="$XDG_DATA_HOME"
         ;;
-      "${DOTIG_PATH}/home/xdg_lib/"*)
-        _partial_dest="${DOTIG_PATH}/home/xdg_lib"
+      "${DOTIG_PATH}home/xdg_lib/"*)
+        _partial_dest="${DOTIG_PATH}home/xdg_lib"
         _removed_part="$XDG_LIB_HOME"
         ;;
-      "${DOTIG_PATH}/home/"*)
-        _partial_dest="${DOTIG_PATH}/home"
+      "${DOTIG_PATH}home/"*)
+        _partial_dest="${DOTIG_PATH}home"
         _removed_part="$HOME"
         ;;
       *)
