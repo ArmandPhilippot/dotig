@@ -5,6 +5,7 @@
 # with Git.
 #
 # Requirements: Git and GNU Coreutils.
+# Tested with: Manjaro 21, Debian 10, Ubuntu 20 and Fedora 34.
 # Author: Armand Philippot <https://www.armandphilippot.com/>
 # URL: https://github.com/ArmandPhilippot/dotig
 
@@ -389,19 +390,6 @@ is_linux() {
   [ "$OSTYPE" = "linux-gnu" ]
 }
 
-# Check if the current distribution is Manjaro.
-is_manjaro() {
-  if [ -f "/etc/os-release" ]; then
-    # shellcheck disable=SC1091
-    . "/etc/os-release"
-    [ "$ID" ] && [ "$ID" = "manjaro" ]
-  elif [ -f "/etc/lsb-release" ]; then
-    # shellcheck disable=SC1091
-    . "/etc/lsb-release"
-    [ "$DISTRIB_ID" ] && [ "$DISTRIB_ID" = "ManjaroLinux" ]
-  fi
-}
-
 # Check for supported OS/distribution.
 check_os() {
   is_verbose && printf "Identifying the operating system...\n"
@@ -414,10 +402,6 @@ check_os() {
     printf "%sError:%s Linux is the only supported operating system.\n" "$_color_error" "$_color_reset"
     printf "Exit.\n"
     exit 1
-  fi
-
-  if ! is_manjaro; then
-    printf "%sWarning:%s Dotig has only been tested with Manjaro.\n" "$_color_warning" "$_color_reset"
   fi
 }
 
