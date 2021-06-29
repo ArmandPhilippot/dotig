@@ -1009,7 +1009,8 @@ handle_target_update() {
   local _extra_info
   local _choice
 
-  _symlink_target=$(readlink -f "$_symlink")
+  _symlink_target=$(readlink -f "$_symlink") || true
+  [ -z "$_symlink_target" ] && _symlink_target="Target does not exist."
 
   if [ "$_symlink_target" = "$_file" ]; then
     if is_verbose; then
@@ -1017,7 +1018,11 @@ handle_target_update() {
       printf "%sSkipped:%s %s\n" "$_color_warning" "$_color_reset" "$file"
     fi
   else
-    [ -h "$_file" ] && _extra_info=" (also a symlink)" && _file_target=$(readlink -f "$_file")
+    if [ -h "$_file" ]; then
+      _extra_info=" (also a symlink)"
+      _file_target=$(readlink -f "$_file") || true
+      [ -z "$_file_target" ] && _file_target="Target does not exist."
+    fi
 
     printf "\n%sWarning:%s A symlink exists but its target does not match your dotfile backup:\n" "$_color_warning" "$_color_reset"
     printf "* Symlink: %s\n" "${_color_output}${_symlink}${_color_reset}"
@@ -1216,7 +1221,7 @@ remove_symlinks() {
   find "$HOME" -type l -not \( -path "$DOTIG_PATH/*" -prune \) -ilname "$DOTIG_PATH*" -print > "$_tmp"
 
   while IFS= read -r _symlink <&3; do
-    _symlink_target=$(readlink "$_symlink")
+    _symlink_target=$(readlink "$_symlink") || true
 
     case $_symlink_target in
       "${DOTIG_PATH}home/xdg_bin/"*)
