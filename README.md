@@ -37,6 +37,42 @@ If you want to backup your dotfiles, and since you're here, I assume Git is not 
 
 **Regarding GNU Coreutils:** I tried to make Dotig portable by avoiding some GNU Coreutils but there are still incompatible commands or options.
 
+## Structure
+
+Dotig is based on [XDG Specification](https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html) with extra environment variables to make the tool more portable.
+
+If you have not set these environment variables and if your distribution does not provide some default, Dotig define some defaults for you. Then, it creates the appropriate directories inside your dotfiles repository when you add some dotfiles.
+
+`$DOTFILES` corresponds to your dotfiles repository. See [Configuration](#configuration).
+
+|(Custom) XDG Specification|`$HOME` default paths|Repo paths|
+|---|---|---|
+|`XDG_BIN_HOME`|`~/.local/bin`|`$DOTFILES/home/xdg_bin`|
+|`XDG_CACHE_HOME`|`~/.cache`|`$DOTFILES/home/xdg_cache`|
+|`XDG_CONFIG_HOME`|`~/.config`|`$DOTFILES/home/xdg_config`|
+|`XDG_DATA_HOME`|`~/.local/share`|`$DOTFILES/home/xdg_data`|
+|`XDG_LIB_HOME`|`~/.local/lib`|`$DOTFILES/home/xdg_lib`|
+|`XDG_STATE_HOME`|`~/.local/state`|`$DOTFILES/home/xdg_state`|
+
+This is useful if you use different paths on two different distributions. For example:
+* your first distribution can use `XDG_CONFIG_HOME=$HOME/.config`
+* the second can use `XDG_CONFIG_HOME=$HOME/.local/etc`
+
+Dotig can also copy files that are not in XDG paths. In this case, it will add your repository path before the file path. With one exception for HOME: `/home/username` is replaced with `/home`.
+
+For example:
+|File path|Copy path|
+|---|---|
+|`~/.ssh/config`|`$DOTFILES/home/.ssh/config`|
+|`/etc/nanorc`|`$DOTFILES/etc/nanorc`|
+
+If you add files that are not in your `$HOME`, Dotig will copy them but no symbolic link will be created. It does not use administrator rights. So, you can backup these files but you will have to manage their integration yourself.
+
+The behavior is the same for updating and deleting symlinks.
+
+You can also safely put some files (like a custom init script or a readme) at the root of your dotfiles repository. Dotig won't touch them except for Git features:
+* they will be included in your repo status.
+* if they are modified and you use Dotig to make a commit, they will be added to this commit.
 ## Install
 
 Download `dotig` then make sure it is executable:
