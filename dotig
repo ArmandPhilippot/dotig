@@ -1043,7 +1043,7 @@ handle_target_update() {
   if [ "$_symlink_target" = "$_file" ]; then
     if is_verbose; then
       printf "A symlink with the same target already exists.\n"
-      printf "%sSkipped:%s %s\n" "$_color_warning" "$_color_reset" "$file"
+      printf "%sSkipped:%s %s\n" "$_color_warning" "$_color_reset" "$_file"
     fi
   else
     if [ -h "$_file" ]; then
