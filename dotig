@@ -181,9 +181,21 @@ is_verbose() {
 # Functions to handle the various error messages.
 ###############################################################################
 
+# Clean up temporary files then exit.
+cleanup() {
+  is_verbose && printf "\n\nDeleting temporary files...\n"
+  rm -f "$_tmp"
+  if is_verbose; then
+    printf "%sSuccess:%s Temporary files deleted.\n" "$_color_success" "$_color_reset"
+    printf "Exit.\n"
+  fi
+  exit
+}
+
 # Display an error in case of an unplanned scenario then exit.
 error_unexpected() {
   printf "%sAn unexpected error occurred.%s Exit.\n" "$_color_error" "$_color_reset"
+  cleanup
   exit 1
 }
 
@@ -200,6 +212,9 @@ error_backup_path() {
   printf "See CONFIGURATION in \`dotig --help\` or \`dotig -h\`.\n"
   exit 1
 }
+
+# Execute cleanup function if these signals are caught.
+trap cleanup SIGHUP SIGINT SIGQUIT SIGTERM
 
 ###############################################################################
 # Git Helpers
