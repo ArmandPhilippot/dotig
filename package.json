@@ -5,7 +5,7 @@
     "dotfiles",
     "git"
   ],
-  "version": "0.1.0",
+  "version": "1.0.0",
   "license": "MIT",
   "author": {
     "name": "Armand Philippot",
@@ -31,8 +31,8 @@
     "standard-version": "^9.3.0"
   },
   "standard-version": {
-		"scripts": {
-			"postbump": "npm run bump && git add -A"
-		}
-	}
+    "scripts": {
+      "postbump": "npm run bump && git add -A"
+    }
+  }
 }
