@@ -1396,14 +1396,14 @@ update_all_submodules() {
 # Display the main help menu.
 print_dotig_help() {
   cat <<EOF
-USAGE
+# USAGE
 dotig [OPTIONS]
-dotig <COMMANDS> [<FILES...>]
+dotig [-v|--verbose] <COMMANDS> [<FILES...>]
 
-DESCRIPTION
+# DESCRIPTION
 Dotig is a dotfiles manager to quickly setup your machine & synchronize your dotfiles with Git.
 
-COMMANDS
+# COMMANDS
 add               Add new dotfiles and create symlinks.
                   Accept both absolute and relative paths.
 update            Update all symlinks.
@@ -1416,25 +1416,26 @@ rm                Replace all symlinks with the original file.
 status            Display the status of your dotfiles repository.
                   Check for dirty files and if push or pull is needed.
 
-OPTIONS
+# OPTIONS
 -h, --help        Print this help.
 -ns, --no-status  Do not show the repo status.
 -v, --verbose     Explain what is done.
 --version         Print Dotig version and check for new releases.
 
-CONFIGURATION
-\$DOTFILES         Define the path of your dotfiles repository.
-                  Declare its value in your shell.
+# CONFIGURATION
+DOTFILES          Environment variable to define the path of your dotfiles
+                  repository. You need to declare its value in your shell
+                  configuration files.
                   For example in .profile for Bash or .zshenv for Zsh.
                   Current value: $DOTFILES
 
-BUGS
+# BUGS
 If you find any bug, you can report it on https://github.com/ArmandPhilippot/dotig/issues.
 
-ABOUT
-version           Dotig $DOTIG_VERSION
-license           MIT
-project url       https://github.com/ArmandPhilippot/dotig
+# ABOUT
+Version           Dotig $DOTIG_VERSION
+License           MIT
+Project URL       https://github.com/ArmandPhilippot/dotig
 EOF
 
   return_menu
