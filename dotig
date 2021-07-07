@@ -1573,37 +1573,9 @@ handle_dotig_cli_commands() {
   exit
 }
 
-# Change Dotig parameters according to the options passed through CLI
-# Require at least one argument.
-loop_through_options() {
-  [ $# -eq 0 ] && error_unexpected
-
-  while [ $# -ge 1 ]; do
-    case $1 in
-    --no-status|-ns)
-      _show_repo_status="false"
-      shift
-      ;;
-    --verbose|-v)
-      _verbose="true"
-      shift
-      ;;
-    *)
-      if is_dotig_cli_command "$1"; then
-        handle_dotig_cli_commands "$@"
-      else
-        invalid_usage
-      fi
-      ;;
-    esac
-  done
-}
-
-# Redirect command to the right function.
-# Require 1 or more arguments.
-# Argument 1: a valid option.
-# Additional arguments are also valid options.
-handle_dotig_cli_options() {
+# Set Dotig options according to the arguments passed through CLI
+# Require at least one argument. # Additional arguments are valid in some cases.
+set_dotig_options() {
   [ $# -eq 0 ] && error_unexpected
 
   if [ $# -eq 1 ]; then
@@ -1611,19 +1583,45 @@ handle_dotig_cli_options() {
     --help|-h)
       _disable_menu="true"
       print_dotig_help
+      exit
+      ;;
+    --no-status|-ns)
+      _show_repo_status="false"
+      ;;
+    --verbose|-v)
+      _verbose="true"
       ;;
     --version)
       _disable_menu="true"
       print_dotig_version
       check_dotig_updates
+      exit
       ;;
-    *)
-      loop_through_options "$@"
-      main
-      ;;
+    *) invalid_usage ;;
     esac
+
+    main
   else
-    loop_through_options "$@"
+    while [ $# -ge 1 ]; do
+      case $1 in
+      --no-status|-ns)
+        _show_repo_status="false"
+        shift
+        ;;
+      --verbose|-v)
+        _verbose="true"
+        shift
+        ;;
+      *)
+        if is_dotig_cli_command "$1"; then
+          handle_dotig_cli_commands "$@"
+        else
+          invalid_usage
+        fi
+        ;;
+      esac
+    done
+
     main
   fi
 }
@@ -1634,7 +1632,7 @@ dotig_cli() {
   if is_dotig_cli_command "$1"; then
     handle_dotig_cli_commands "$@"
   else
-    handle_dotig_cli_options "$@"
+    set_dotig_options "$@"
   fi
 }
 
