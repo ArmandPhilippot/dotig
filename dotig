@@ -935,7 +935,7 @@ add_dotfiles() {
 
   for _dotfile in "${_dotfiles[@]}"; do
     get_absolute_path _dotfile
-    [ ! -e "$_dotfile" ] && printf "%sError:%s %s is not a file.\n" "$_color_error" "$_color_reset" "$_file" && exit 2
+    [ ! -e "$_dotfile" ] && printf "%sError:%s %s is not a file.\n" "$_color_error" "$_color_reset" "$_dotfile" && exit 2
 
     case $_dotfile in
       "$XDG_BIN_HOME"*)
