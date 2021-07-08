@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## Unreleased
+
+### Features
+* add help menu for each commands
+
+
 ## [1.0.0](https://github.com/ArmandPhilippot/dotig/compare/v0.1.0...v1.0.0) (2021-06-30)
 
 
