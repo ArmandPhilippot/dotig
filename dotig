@@ -1604,6 +1604,11 @@ handle_dotig_cli_commands() {
   DOTIG_PATH="$DOTFILES"
   _disable_menu="true"
 
+  case $DOTIG_PATH in
+    */) : ;;
+    *) DOTIG_PATH="${DOTIG_PATH}/"
+  esac
+
   set_xdg_paths
 
   if [ $# -eq 1 ]; then
