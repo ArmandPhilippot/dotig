@@ -1739,6 +1739,107 @@ is_command_help() {
   [ "$1" = "-h" ] || [ "$1" = "--help" ]
 }
 
+# Handle options for the add dotfiles command before calling it.
+call_add_dotfiles() {
+  if is_command_help "$1"; then
+    [ $# -gt 1 ] && invalid_usage
+    print_add_help
+  else
+    add_dotfiles "$@"
+  fi
+}
+
+# Handle options for the update symlinks command before calling it.
+call_update_symlinks() {
+  [ $# -gt 1 ] && invalid_usage
+
+  if [ $# -eq 0 ]; then
+    update_symlinks
+  elif is_command_help "$1"; then
+    print_update_help
+  else
+    invalid_usage
+  fi
+}
+
+# Handle options for the commit changes command before calling it.
+call_commit_changes() {
+  [ $# -gt 1 ] && invalid_usage
+
+  if [ $# -eq 0 ]; then
+    commit_changes
+  elif is_command_help "$1"; then
+    print_commit_help
+  else
+    invalid_usage
+  fi
+}
+
+# Handle options for the push changes command before calling it.
+call_push_changes() {
+  [ $# -gt 1 ] && invalid_usage
+
+  if [ $# -eq 0 ]; then
+    push_changes
+  elif is_command_help "$1"; then
+    print_push_help
+  else
+    invalid_usage
+  fi
+}
+
+# Handle options for the pull changes command before calling it.
+call_pull_changes() {
+  [ $# -gt 1 ] && invalid_usage
+
+  if [ $# -eq 0 ]; then
+    pull_changes
+  elif is_command_help "$1"; then
+    print_pull_help
+  else
+    invalid_usage
+  fi
+}
+
+# Handle options for the update submodules command before calling it.
+call_update_all_submodules() {
+  [ $# -gt 1 ] && invalid_usage
+
+  if [ $# -eq 0 ]; then
+    update_all_submodules
+  elif is_command_help "$1"; then
+    print_submodule_help
+  else
+    invalid_usage
+  fi
+}
+
+# Handle options for the remove symlinks command before calling it.
+call_remove_symlinks() {
+  [ $# -gt 1 ] && invalid_usage
+
+  if [ $# -eq 0 ]; then
+    remove_symlinks
+  elif is_command_help "$1"; then
+    print_remove_help
+  else
+    invalid_usage
+  fi
+}
+
+# Handle options for the get repo status command before calling it.
+call_get_repo_status() {
+  [ $# -gt 1 ] && invalid_usage
+
+  if [ $# -eq 0 ]; then
+    get_repo_status
+  elif is_command_help "$1"; then
+    print_status_help
+  else
+    invalid_usage
+  fi
+}
+
 # Redirect command to the right function.
 # Require 1 or more arguments.
 # Argument 1: a valid command.
@@ -1755,88 +1856,20 @@ handle_dotig_cli_commands() {
 
   set_xdg_paths
 
-  if [ $# -eq 1 ]; then
-    case $1 in
-    add) add_dotfiles ;;
-    update) update_symlinks ;;
-    commit) commit_changes ;;
-    push) push_changes ;;
-    pull) pull_changes ;;
-    submodule) update_all_submodules ;;
-    rm) remove_symlinks ;;
-    status) get_repo_status ;;
-    *) error_unexpected ;;
-    esac
-  else
-    case $1 in
-    add)
-      shift
-      if is_command_help "$1" && [ $# -gt 1 ]; then
-        invalid_usage
-      elif is_command_help "$1"; then
-        print_add_help
-      fi
-      add_dotfiles "$@"
-      ;;
-    update)
-      shift
-      if is_command_help "$1" && [ $# -eq 1 ]; then
-        print_update_help
-      else
-        invalid_usage
-      fi
-      ;;
-    commit)
-      shift
-      if is_command_help "$1" && [ $# -eq 1 ]; then
-        print_commit_help
-      else
-        invalid_usage
-      fi
-      ;;
-    push)
-      shift
-      if is_command_help "$1" && [ $# -eq 1 ]; then
-        print_push_help
-      else
-        invalid_usage
-      fi
-      ;;
-    pull)
-      shift
-      if is_command_help "$1" && [ $# -eq 1 ]; then
-        print_pull_help
-      else
-        invalid_usage
-      fi
-      ;;
-    submodule)
-      shift
-      if is_command_help "$1" && [ $# -eq 1 ]; then
-        print_submodule_help
-      else
-        invalid_usage
-      fi
-      ;;
-    rm)
-      shift
-      if is_command_help "$1" && [ $# -eq 1 ]; then
-        print_remove_help
-      else
-        invalid_usage
-      fi
-      ;;
-    status)
-      shift
-      if is_command_help "$1" && [ $# -eq 1 ]; then
-        print_status_help
-      else
-        invalid_usage
-      fi
-      ;;
-    *) invalid_usage ;;
-    esac
-  fi
+  local _command_name=$1
+  shift
+
+  case $_command_name in
+  add) call_add_dotfiles "$@" ;;
+  update) call_update_symlinks "$@" ;;
+  commit) call_commit_changes "$@" ;;
+  push) call_push_changes "$@" ;;
+  pull) call_pull_changes "$@" ;;
+  submodule) call_update_all_submodules "$@" ;;
+  rm) call_remove_symlinks "$@" ;;
+  status) call_get_repo_status "$@" ;;
+  *) error_unexpected ;;
+  esac
 
   exit
 }
