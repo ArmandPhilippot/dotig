@@ -1441,6 +1441,31 @@ EOF
   return_menu
 }
 
+# Display the help for add command then exit.
+print_add_help() {
+  cat <<EOF
+# USAGE
+dotig add [OPTIONS]
+dotig add [<files...>]
+
+# DESCRIPTION
+The add command allows Dotig to copy your dotfiles inside your backup directory then to symlink them. You can provide one or more files. If it is a directory, the files inside will be processed.
+
+# OPTIONS
+-h, --help        Print this help.
+
+# BUGS
+If you find any bug, you can report it on https://github.com/ArmandPhilippot/dotig/issues.
+
+# ABOUT
+Version           Dotig $DOTIG_VERSION
+License           MIT
+Project URL       https://github.com/ArmandPhilippot/dotig
+EOF
+
+  exit
+}
+
 ###############################################################################
 # Menu
 # Display all possible options.
@@ -1537,6 +1562,14 @@ is_dotig_cli_command() {
   return 1
 }
 
+# Check if the argument passed is the help option.
+# Argument 1: the option to test.
+is_command_help() {
+  [ $# -ne 1 ] && error_unexpected
+
+  [ "$1" = "-h" ] || [ "$1" = "--help" ]
+}
+
 # Redirect command to the right function.
 # Require 1 or more arguments.
 # Argument 1: a valid command.
@@ -1564,6 +1597,11 @@ handle_dotig_cli_commands() {
     case $1 in
     add)
       shift
+      if is_command_help "$1" && [ $# -gt 1 ]; then
+        invalid_usage
+      elif is_command_help "$1"; then
+        print_add_help
+      fi
       add_dotfiles "$@"
       ;;
     *) invalid_usage ;;
