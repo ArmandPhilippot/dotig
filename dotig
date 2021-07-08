@@ -1563,6 +1563,30 @@ EOF
   exit
 }
 
+# Display the help for submodule command then exit.
+print_submodule_help() {
+  cat <<EOF
+# USAGE
+dotig submodule [OPTIONS]
+
+# DESCRIPTION
+If you are using git submodules inside your dotfiles repository, the submodule command allows Dotig to update all of them.
+
+# OPTIONS
+-h, --help        Print this help.
+
+# BUGS
+If you find any bug, you can report it on https://github.com/ArmandPhilippot/dotig/issues.
+
+# ABOUT
+Version           Dotig $DOTIG_VERSION
+License           MIT
+Project URL       https://github.com/ArmandPhilippot/dotig
+EOF
+
+  exit
+}
+
 # Display the help for remove command then exit.
 print_remove_help() {
   cat <<EOF
@@ -1782,6 +1806,14 @@ handle_dotig_cli_commands() {
       shift
       if is_command_help "$1" && [ $# -eq 1 ]; then
         print_pull_help
+      else
+        invalid_usage
+      fi
+      ;;
+    submodule)
+      shift
+      if is_command_help "$1" && [ $# -eq 1 ]; then
+        print_submodule_help
       else
         invalid_usage
       fi
