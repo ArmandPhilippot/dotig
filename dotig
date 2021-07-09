@@ -1488,6 +1488,9 @@ It only handles files in home directory. If your repo contains files outside you
 
 # OPTIONS
 -h, --help                Print this help.
+-ia, --ignore-all         Always skip files when a conflict exists. You can
+                          achieve the same thing by combining --ignore-duplicate
+                          and --ignore-target.
 -id, --ignore-duplicate   Always skip symlinking when a file with the same name
                           already exists.
 -it, --ignore-target      Always skip symlinking when a symlink already exists
@@ -1773,6 +1776,11 @@ call_update_symlinks() {
     else
       while [ $# -ge 1 ]; do
         case $1 in
+          --ignore-all|-ia)
+            _ignore_duplicate="true"
+            _ignore_symlink_different_target="true"
+            shift
+            ;;
           --ignore-duplicate|-id)
             _ignore_duplicate="true"
             shift
