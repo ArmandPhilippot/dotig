@@ -206,7 +206,15 @@ error_unexpected() {
 # Display an error in case of invalid usage then exist.
 invalid_usage() {
   printf "%sError:%s invalid usage.\n" "$_color_error" "$_color_reset"
-  printf "Use \`dotig --help\` or \`dotig -h\` to display all accepted commands and options.\n"
+
+  if [ $# -eq 1 ]; then
+    local _command_name=$1
+
+    printf "Use \`dotig %s --help\` or \`dotig %s -h\` to display all accepted options.\n" "$_command_name" "$_command_name"
+  else
+    printf "Use \`dotig --help\` or \`dotig -h\` to display all accepted commands and options.\n"
+  fi
+
   exit 1
 }
 
@@ -1759,7 +1767,7 @@ is_command_help() {
 # Handle options for the add dotfiles command before calling it.
 call_add_dotfiles() {
   if is_command_help "$1"; then
-    [ $# -gt 1 ] && invalid_usage
+    [ $# -gt 1 ] && invalid_usage "add"
     print_add_help
   else
     add_dotfiles "$@"
@@ -1772,7 +1780,11 @@ call_update_symlinks() {
     update_symlinks
   else
     if is_command_help "$1"; then
-      print_update_help
+      if [ $# -eq 1 ]; then
+        print_update_help
+      else
+        invalid_usage "update"
+      fi
     else
       while [ $# -ge 1 ]; do
         case $1 in
@@ -1789,7 +1801,7 @@ call_update_symlinks() {
             _ignore_symlink_different_target="true"
             shift
             ;;
-          *) invalid_usage
+          *) invalid_usage "update"
         esac
       done
 
@@ -1800,79 +1812,79 @@ call_update_symlinks() {
 
 # Handle options for the commit changes command before calling it.
 call_commit_changes() {
-  [ $# -gt 1 ] && invalid_usage
+  [ $# -gt 1 ] && invalid_usage "commit"
 
   if [ $# -eq 0 ]; then
     commit_changes
   elif is_command_help "$1"; then
     print_commit_help
   else
-    invalid_usage
+    invalid_usage "commit"
   fi
 }
 
 # Handle options for the push changes command before calling it.
 call_push_changes() {
-  [ $# -gt 1 ] && invalid_usage
+  [ $# -gt 1 ] && invalid_usage "push"
 
   if [ $# -eq 0 ]; then
     push_changes
   elif is_command_help "$1"; then
     print_push_help
   else
-    invalid_usage
+    invalid_usage "push"
   fi
 }
 
 # Handle options for the pull changes command before calling it.
 call_pull_changes() {
-  [ $# -gt 1 ] && invalid_usage
+  [ $# -gt 1 ] && invalid_usage "pull"
 
   if [ $# -eq 0 ]; then
     pull_changes
   elif is_command_help "$1"; then
     print_pull_help
   else
-    invalid_usage
+    invalid_usage "pull"
   fi
 }
 
 # Handle options for the update submodules command before calling it.
 call_update_all_submodules() {
-  [ $# -gt 1 ] && invalid_usage
+  [ $# -gt 1 ] && invalid_usage "submodule"
 
   if [ $# -eq 0 ]; then
     update_all_submodules
   elif is_command_help "$1"; then
     print_submodule_help
   else
-    invalid_usage
+    invalid_usage "submodule"
   fi
 }
 
 # Handle options for the remove symlinks command before calling it.
 call_remove_symlinks() {
-  [ $# -gt 1 ] && invalid_usage
+  [ $# -gt 1 ] && invalid_usage "rm"
 
   if [ $# -eq 0 ]; then
     remove_symlinks
   elif is_command_help "$1"; then
     print_remove_help
   else
-    invalid_usage
+    invalid_usage "rm"
   fi
 }
 
 # Handle options for the get repo status command before calling it.
 call_get_repo_status() {
-  [ $# -gt 1 ] && invalid_usage
+  [ $# -gt 1 ] && invalid_usage "status"
 
   if [ $# -eq 0 ]; then
     get_repo_status
   elif is_command_help "$1"; then
     print_status_help
   else
-    invalid_usage
+    invalid_usage "status"
   fi
 }
 
