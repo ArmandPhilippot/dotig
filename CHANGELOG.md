@@ -12,6 +12,10 @@ All notable changes to this project will be documented in this file. See [standa
 * **update:** add an option to skip all conflicting files
 * print a different invalid usage message depending on the command
 
+### Bug Fixes
+
+* enforce trailing slash for $DOTFILES path in CLI commands
+* **add:** display filename if it is not a file 
 
 ## [1.0.0](https://github.com/ArmandPhilippot/dotig/compare/v0.1.0...v1.0.0) (2021-06-30)
 
