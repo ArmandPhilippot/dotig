@@ -71,6 +71,10 @@ _disable_menu="false"
 _show_repo_status="true"
 _verbose="false"
 
+# Update symlinks parameters
+_ignore_duplicate="false"
+_ignore_symlink_different_target="false"
+
 ###############################################################################
 # Helpers
 # Various helpers used across the script in different locations.
@@ -880,42 +884,46 @@ handle_duplicate() {
   local _home_dotfile=$1
   local _backup_dotfile=$2
 
-  printf "\n%sWarning:%s A file with the same name already exists.\n" "$_color_warning" "$_color_reset"
+  if [ $_ignore_duplicate = "true" ]; then
+    printf "\n%sSkipped:%s %s (duplicate)\n" "$_color_warning" "$_color_reset" "$_home_dotfile"
+  else
+    printf "\n%sWarning:%s A file with the same name already exists.\n" "$_color_warning" "$_color_reset"
 
-  [ -h "$_backup_dotfile" ] && printf "%sWarning:%s %s is a symlink.\n" "$_color_warning" "$_color_reset" "${_color_output}${_backup_dotfile}${_color_reset}"
-  [ -h "$_home_dotfile" ] && printf "%sWarning:%s %s is a symlink.\n" "$_color_warning" "$_color_reset" "${_color_output}${_home_dotfile}${_color_reset}"
+    [ -h "$_backup_dotfile" ] && printf "%sWarning:%s %s is a symlink.\n" "$_color_warning" "$_color_reset" "${_color_output}${_backup_dotfile}${_color_reset}"
+    [ -h "$_home_dotfile" ] && printf "%sWarning:%s %s is a symlink.\n" "$_color_warning" "$_color_reset" "${_color_output}${_home_dotfile}${_color_reset}"
 
-  printf "How do you want to proceed?\n"
+    printf "How do you want to proceed?\n"
 
-  while true; do
-    print_duplicate_menu
-    printf "Your choice: "
-    read -r _choice
+    while true; do
+      print_duplicate_menu
+      printf "Your choice: "
+      read -r _choice
 
-    case $_choice in
-      1)
-        print_diff "$_home_dotfile" "$_backup_dotfile"
-        printf "\n"
-        ;;
-      2)
-        mv -f "$_home_dotfile" "$_backup_dotfile"
-        ln -s "$_backup_dotfile" "$_home_dotfile"
-        printf "\n%sSuccess:%s %s replaced with %s and symlink created.\n" "$_color_success" "$_color_reset" "${_color_output}${_backup_dotfile}${_color_reset}" "${_color_output}${_home_dotfile}${_color_reset}"
-        break
-        ;;
-      3)
-        rm "$_home_dotfile"
-        ln -s "$_backup_dotfile" "$_home_dotfile"
-        printf "\n%sSuccess:%s %s replaced with a symlink.\n" "$_color_success" "$_color_reset" "${_color_output}${_home_dotfile}${_color_reset}"
-        break
-        ;;
-      4)
-        printf "\n%sSkipped:%s %s\n" "$_color_warning" "$_color_reset" "$_home_dotfile"
-        break
-        ;;
-      *) printf "%sError:%s choose between %s[1]%s, %s[2]%s, %s[3]%s or %s[4]%s.\n" "$_color_error" "$_color_reset" "$_color_choice" "$_color_reset" "$_color_choice" "$_color_reset" "$_color_choice" "$_color_reset" "$_color_choice" "$_color_reset"
-    esac
-  done
+      case $_choice in
+        1)
+          print_diff "$_home_dotfile" "$_backup_dotfile"
+          printf "\n"
+          ;;
+        2)
+          mv -f "$_home_dotfile" "$_backup_dotfile"
+          ln -s "$_backup_dotfile" "$_home_dotfile"
+          printf "\n%sSuccess:%s %s replaced with %s and symlink created.\n" "$_color_success" "$_color_reset" "${_color_output}${_backup_dotfile}${_color_reset}" "${_color_output}${_home_dotfile}${_color_reset}"
+          break
+          ;;
+        3)
+          rm "$_home_dotfile"
+          ln -s "$_backup_dotfile" "$_home_dotfile"
+          printf "\n%sSuccess:%s %s replaced with a symlink.\n" "$_color_success" "$_color_reset" "${_color_output}${_home_dotfile}${_color_reset}"
+          break
+          ;;
+        4)
+          printf "\n%sSkipped:%s %s\n" "$_color_warning" "$_color_reset" "$_home_dotfile"
+          break
+          ;;
+        *) printf "%sError:%s choose between %s[1]%s, %s[2]%s, %s[3]%s or %s[4]%s.\n" "$_color_error" "$_color_reset" "$_color_choice" "$_color_reset" "$_color_choice" "$_color_reset" "$_color_choice" "$_color_reset" "$_color_choice" "$_color_reset"
+      esac
+    done
+  fi
 }
 
 # Move the dotfiles from $HOME to $DOTFILES and create a symlink.
@@ -1045,6 +1053,8 @@ handle_target_update() {
       printf "A symlink with the same target already exists.\n"
       printf "%sSkipped:%s %s\n" "$_color_warning" "$_color_reset" "$_file"
     fi
+  elif [ $_ignore_symlink_different_target = "true" ]; then
+    printf "\n%sSkipped:%s %s (different target)\n" "$_color_warning" "$_color_reset" "$_file"
   else
     if [ -h "$_file" ]; then
       _extra_info=" (also a symlink)"
@@ -1473,11 +1483,18 @@ print_update_help() {
 dotig update [OPTIONS]
 
 # DESCRIPTION
-The update command allows Dotig to create or update all the symlinks based on your backup dotfiles. This command also removes all the broken symlinks in your $HOME if the symlink target is in your repo.
+The update command allows Dotig to create or update all the symlinks based on your backup dotfiles. This command also removes all the broken symlinks in your \$HOME if the symlink target is in your repo.
 It only handles files in home directory. If your repo contains files outside your \$HOME you need to create the symlinks yourself.
 
 # OPTIONS
--h, --help        Print this help.
+-h, --help                Print this help.
+-ia, --ignore-all         Always skip files when a conflict exists. You can
+                          achieve the same thing by combining --ignore-duplicate
+                          and --ignore-target.
+-id, --ignore-duplicate   Always skip symlinking when a file with the same name
+                          already exists.
+-it, --ignore-target      Always skip symlinking when a symlink already exists
+                          even if the target is not the same.
 
 # BUGS
 If you find any bug, you can report it on https://github.com/ArmandPhilippot/dotig/issues.
@@ -1751,14 +1768,33 @@ call_add_dotfiles() {
 
 # Handle options for the update symlinks command before calling it.
 call_update_symlinks() {
-  [ $# -gt 1 ] && invalid_usage
-
   if [ $# -eq 0 ]; then
     update_symlinks
-  elif is_command_help "$1"; then
-    print_update_help
   else
-    invalid_usage
+    if is_command_help "$1"; then
+      print_update_help
+    else
+      while [ $# -ge 1 ]; do
+        case $1 in
+          --ignore-all|-ia)
+            _ignore_duplicate="true"
+            _ignore_symlink_different_target="true"
+            shift
+            ;;
+          --ignore-duplicate|-id)
+            _ignore_duplicate="true"
+            shift
+            ;;
+          --ignore-target|-it)
+            _ignore_symlink_different_target="true"
+            shift
+            ;;
+          *) invalid_usage
+        esac
+      done
+
+      update_symlinks
+    fi
   fi
 }
 

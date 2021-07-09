@@ -5,7 +5,11 @@ All notable changes to this project will be documented in this file. See [standa
 ## Unreleased
 
 ### Features
+
 * add help menu for each commands
+* **update:** add an option to skip existing files
+* **update:** add an option to skip symlinks with a different target
+* **update:** add an option to skip all conflicting files
 
 
 ## [1.0.0](https://github.com/ArmandPhilippot/dotig/compare/v0.1.0...v1.0.0) (2021-06-30)
