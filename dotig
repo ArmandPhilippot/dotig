@@ -79,7 +79,7 @@ _ignore_symlink_different_target="false"
 _show_dirty_filenames="false"
 
 # Commit parameters
-_commit_all="true"
+_commit_files="all"
 
 ###############################################################################
 # Helpers
@@ -1382,10 +1382,20 @@ commit_changes() {
 
   local _staged_files
 
-  if [ "$_commit_all" = "true" ]; then
-    git -C "$DOTIG_PATH" add --all
+  if [ "$_commit_files" = "untracked" ]; then
+    if [ "$(get_untracked_files_count)" -gt 0 ]; then
+      git -C "$DOTIG_PATH" add "$(git -C "$DOTIG_PATH" ls-files -o --exclude-standard)"
+    else
+      printf "\nThere are no untracked files.\n"
+    fi
+  elif [ "$_commit_files" = "tracked" ]; then
+    if [ "$(get_modified_files_count)" -gt 0 ] || [ "$(get_deleted_files_count)" -gt 0 ]; then
+      git -C "$DOTIG_PATH" add -u
+    else
+      printf "\nThere are no modified or deleted files.\n"
+    fi
   else
-    git -C "$DOTIG_PATH" add -u
+    git -C "$DOTIG_PATH" add --all
   fi
 
   _staged_files=$(get_staged_files_count) || true
@@ -1592,6 +1602,8 @@ The commit command allows Dotig to staged all changes in your repository (untrac
 -m, --message     Use the given string as commit message. If used with another
                   option, the message must follow the -m or --message option.
 -t, --tracked     Commit only tracked files. Ignore untracked.
+-u, --untracked   Commit only untracked files. Ignore others (i.e. modified or
+                  deleted).
 
 # BUGS
 If you find any bug, you can report it on https://github.com/ArmandPhilippot/dotig/issues.
@@ -1900,14 +1912,22 @@ call_commit_changes() {
         shift
         ;;
       --tracked|-t)
-        _commit_all="false"
+        _commit_files="tracked"
+        shift
+        ;;
+      --untracked|-u)
+        _commit_files="untracked"
         shift
         ;;
       *) invalid_usage "commit" ;;
       esac
     done
 
-    commit_changes "$_commit_message"
+    if [ -n "$_commit_message" ]; then
+      commit_changes "$_commit_message"
+    else
+      commit_changes
+    fi
   fi
 }
 
