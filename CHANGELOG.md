@@ -11,7 +11,10 @@ All notable changes to this project will be documented in this file. See [standa
 * **update:** add an option to skip symlinks with a different target
 * **update:** add an option to skip all conflicting files
 * print a different invalid usage message depending on the command
-* add an option to list the dirty files either through the menu or CLI
+* **status:** add an option to list the dirty files either through the menu or CLI
+* **commit:** add an option to provide the commit message
+* **commit:** add an option to commit only tracked files
+* **commit:** add an option to commit only untracked files
 
 ### Bug Fixes
 
