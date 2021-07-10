@@ -762,33 +762,39 @@ print_dirty_summary() {
 }
 
 print_dirty_expanded() {
-  if [ "$(get_modified_files_count)" -ge 1 ]; then
-    printf "\n%s modified files:\n" "$(get_modified_files_count)"
-    git -C "$DOTIG_PATH" ls-files -m
+  if is_repo_dirty; then
+    if [ "$(get_modified_files_count)" -ge 1 ]; then
+      printf "\n%s modified files:\n" "$(get_modified_files_count)"
+      git -C "$DOTIG_PATH" ls-files -m
+    fi
+    if [ "$(get_untracked_files_count)" -ge 1 ]; then
+      printf "\n%s untracked files:\n" "$(get_untracked_files_count)"
+      git -C "$DOTIG_PATH" ls-files -o
+    fi
+    if [ "$(get_deleted_files_count)" -ge 1 ]; then
+      printf "\n%s deleted files:\n" "$(get_deleted_files_count)"
+      git -C "$DOTIG_PATH" ls-files -d
+    fi
+    if [ "$(get_renamed_files_count)" -ge 1 ]; then
+      printf "\n%s renamed files.\n" "$(get_renamed_files_count)"
+    fi
+    if [ "$(get_unmerged_files_count)" -ge 1 ]; then
+      printf "\n%s unmerged files:\n" "$(get_unmerged_files_count)"
+      git -C "$DOTIG_PATH" ls-files -u
+    fi
+    if [ "$(get_stashed_count)" -ge 1 ]; then
+      printf "\n%s stashed files:\n" "$(get_stashed_count)"
+      git -C "$DOTIG_PATH" stash list
+    fi
+    if [ "$(get_staged_files_count)" -ge 1 ]; then
+      printf "\n%s staged files:\n" "$(get_staged_files_count)"
+      git -C "$DOTIG_PATH" diff --name-only --cached
+    fi
+  else
+    printf "\nYou do not have any dirty files.\n"
   fi
-  if [ "$(get_untracked_files_count)" -ge 1 ]; then
-    printf "\n%s untracked files:\n" "$(get_untracked_files_count)"
-    git -C "$DOTIG_PATH" ls-files -o
-  fi
-  if [ "$(get_deleted_files_count)" -ge 1 ]; then
-    printf "\n%s deleted files:\n" "$(get_deleted_files_count)"
-    git -C "$DOTIG_PATH" ls-files -d
-  fi
-  if [ "$(get_renamed_files_count)" -ge 1 ]; then
-    printf "\n%s renamed files.\n" "$(get_renamed_files_count)"
-  fi
-  if [ "$(get_unmerged_files_count)" -ge 1 ]; then
-    printf "\n%s unmerged files:\n" "$(get_unmerged_files_count)"
-    git -C "$DOTIG_PATH" ls-files -u
-  fi
-  if [ "$(get_stashed_count)" -ge 1 ]; then
-    printf "\n%s stashed files:\n" "$(get_stashed_count)"
-    git -C "$DOTIG_PATH" stash list
-  fi
-  if [ "$(get_staged_files_count)" -ge 1 ]; then
-    printf "\n%s staged files:\n" "$(get_staged_files_count)"
-    git -C "$DOTIG_PATH" diff --name-only --cached
-  fi
+
+  return_menu
 }
 
 # Display the repository status.
@@ -1734,9 +1740,10 @@ print_menu_options() {
   printf "%s[5]%s Pull changes from remote\n" "$_color_choice" "$_color_reset"
   printf "%s[6]%s Update all Git submodules\n" "$_color_choice" "$_color_reset"
   printf "%s[7]%s Remove all symlinks\n" "$_color_choice" "$_color_reset"
-  printf "%s[8]%s Check for Dotig update\n" "$_color_choice" "$_color_reset"
-  printf "%s[9]%s Print Dotig version\n" "$_color_choice" "$_color_reset"
-  printf "%s[10]%s Print Dotig help\n" "$_color_choice" "$_color_reset"
+  printf "%s[8]%s Print the dirty files list\n" "$_color_choice" "$_color_reset"
+  printf "%s[9]%s Check for Dotig update\n" "$_color_choice" "$_color_reset"
+  printf "%s[10]%s Print Dotig version\n" "$_color_choice" "$_color_reset"
+  printf "%s[11]%s Print Dotig help\n" "$_color_choice" "$_color_reset"
   printf "%s[q]%s Exit\n" "$_color_choice" "$_color_reset"
 }
 
@@ -1757,9 +1764,10 @@ print_menu() {
     5) pull_changes ;;
     6) update_all_submodules ;;
     7) remove_symlinks ;;
-    8) check_dotig_updates ;;
-    9) print_dotig_version ;;
-    10) print_dotig_help ;;
+    8) print_dirty_expanded ;;
+    9) check_dotig_updates ;;
+    10) print_dotig_version ;;
+    11) print_dotig_help ;;
     [qQ]) exit ;;
     *) printf "\n%sError:%s Invalid choice. Try again.\n" "$_color_error" "$_color_reset" ;;
     esac
