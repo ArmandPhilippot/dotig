@@ -1375,6 +1375,8 @@ remove_symlinks() {
 
 # Commit all changes in the $DOTFILES repository.
 commit_changes() {
+  [ $# -gt 1 ] && invalid_usage
+
   local _staged_files
 
   git -C "$DOTIG_PATH" add --all
@@ -1382,7 +1384,16 @@ commit_changes() {
 
   if [ "$_staged_files" -ne 0 ]; then
     printf "\n"
-    git -C "$DOTIG_PATH" commit
+    if [ $# -eq 0 ]; then
+      git -C "$DOTIG_PATH" commit
+    else
+      local _commit_msg=$1
+      if [ -n "$_commit_msg" ]; then
+        git -C "$DOTIG_PATH" commit -m "$_commit_msg"
+      else
+        invalid_usage "commit"
+      fi
+    fi
     printf "%sSuccess:%s Changes committed!\n" "$_color_success" "$_color_reset"
   else
     printf "\nCommit is not necessary, no staged files.\n"
@@ -1570,6 +1581,7 @@ The commit command allows Dotig to staged all changes in your repository (untrac
 
 # OPTIONS
 -h, --help        Print this help.
+-m, --message     Use the given string as commit message.
 
 # BUGS
 If you find any bug, you can report it on https://github.com/ArmandPhilippot/dotig/issues.
@@ -1859,14 +1871,17 @@ call_update_symlinks() {
 
 # Handle options for the commit changes command before calling it.
 call_commit_changes() {
-  [ $# -gt 1 ] && invalid_usage "commit"
-
   if [ $# -eq 0 ]; then
     commit_changes
-  elif is_command_help "$1"; then
-    print_commit_help
   else
-    invalid_usage "commit"
+    case $1 in
+    -h|--help) print_commit_help ;;
+    -m|--message)
+      shift
+      commit_changes "$1"
+      ;;
+    *) invalid_usage "commit" ;;
+    esac
   fi
 }
 
