@@ -75,6 +75,9 @@ _verbose="false"
 _ignore_duplicate="false"
 _ignore_symlink_different_target="false"
 
+# Status parameters
+_show_dirty_filenames="false"
+
 ###############################################################################
 # Helpers
 # Various helpers used across the script in different locations.
@@ -728,7 +731,7 @@ is_backup_repo_ready() {
 ###############################################################################
 
 # Display the number of affected files foreach type of change.
-get_expanded_status() {
+print_dirty_summary() {
   local _untracked_files_count
   local _staged_files_count
   local _deleted_files_count
@@ -758,6 +761,42 @@ get_expanded_status() {
   printf "%b" "$_expanded_status"
 }
 
+print_dirty_expanded() {
+  if is_repo_dirty; then
+    if [ "$(get_modified_files_count)" -ge 1 ]; then
+      printf "\n%s modified files:\n" "$(get_modified_files_count)"
+      git -C "$DOTIG_PATH" ls-files -m
+    fi
+    if [ "$(get_untracked_files_count)" -ge 1 ]; then
+      printf "\n%s untracked files:\n" "$(get_untracked_files_count)"
+      git -C "$DOTIG_PATH" ls-files -o
+    fi
+    if [ "$(get_deleted_files_count)" -ge 1 ]; then
+      printf "\n%s deleted files:\n" "$(get_deleted_files_count)"
+      git -C "$DOTIG_PATH" ls-files -d
+    fi
+    if [ "$(get_renamed_files_count)" -ge 1 ]; then
+      printf "\n%s renamed files.\n" "$(get_renamed_files_count)"
+    fi
+    if [ "$(get_unmerged_files_count)" -ge 1 ]; then
+      printf "\n%s unmerged files:\n" "$(get_unmerged_files_count)"
+      git -C "$DOTIG_PATH" ls-files -u
+    fi
+    if [ "$(get_stashed_count)" -ge 1 ]; then
+      printf "\n%s stashed files:\n" "$(get_stashed_count)"
+      git -C "$DOTIG_PATH" stash list
+    fi
+    if [ "$(get_staged_files_count)" -ge 1 ]; then
+      printf "\n%s staged files:\n" "$(get_staged_files_count)"
+      git -C "$DOTIG_PATH" diff --name-only --cached
+    fi
+  else
+    printf "\nYou do not have any dirty files.\n"
+  fi
+
+  return_menu
+}
+
 # Display the repository status.
 get_repo_status() {
   local _local_commit
@@ -781,7 +820,11 @@ get_repo_status() {
 
   if is_repo_dirty; then
     printf "Status: %sdirty repo!%s\n" "$_color_warning" "$_color_reset"
-    get_expanded_status
+    if [ $_show_dirty_filenames = "true" ]; then
+      print_dirty_expanded
+    else
+      print_dirty_summary
+    fi
   else
     printf "Status: %sclean repo!%s\n" "$_color_success" "$_color_reset"
   fi
@@ -1382,7 +1425,7 @@ pull_changes() {
     else
       printf "\n%sWarning:%s Dotig cannot pull. Your repo is dirty.\n" "$_color_warning" "$_color_reset"
       printf "See the details below.\n"
-      get_expanded_status
+      print_dirty_summary
       printf "Commit or stash (manually) your changes if you want to pull.\n"
     fi
   else
@@ -1646,6 +1689,8 @@ dotig status [OPTIONS]
 The status command allows Dotig to display information about your repository status. It will check if your repository is up to date and clean. You can also see if you need to pull or push changes. If your repository is dirty it will print some information to help you know why by displaying the number of modified, staged, removed or untracked files.
 
 # OPTIONS
+-e, --expanded    If your local repository is dirty, print the concerned files
+                  by category.
 -h, --help        Print this help.
 
 # BUGS
@@ -1695,9 +1740,10 @@ print_menu_options() {
   printf "%s[5]%s Pull changes from remote\n" "$_color_choice" "$_color_reset"
   printf "%s[6]%s Update all Git submodules\n" "$_color_choice" "$_color_reset"
   printf "%s[7]%s Remove all symlinks\n" "$_color_choice" "$_color_reset"
-  printf "%s[8]%s Check for Dotig update\n" "$_color_choice" "$_color_reset"
-  printf "%s[9]%s Print Dotig version\n" "$_color_choice" "$_color_reset"
-  printf "%s[10]%s Print Dotig help\n" "$_color_choice" "$_color_reset"
+  printf "%s[8]%s Print the dirty files list\n" "$_color_choice" "$_color_reset"
+  printf "%s[9]%s Check for Dotig update\n" "$_color_choice" "$_color_reset"
+  printf "%s[10]%s Print Dotig version\n" "$_color_choice" "$_color_reset"
+  printf "%s[11]%s Print Dotig help\n" "$_color_choice" "$_color_reset"
   printf "%s[q]%s Exit\n" "$_color_choice" "$_color_reset"
 }
 
@@ -1718,9 +1764,10 @@ print_menu() {
     5) pull_changes ;;
     6) update_all_submodules ;;
     7) remove_symlinks ;;
-    8) check_dotig_updates ;;
-    9) print_dotig_version ;;
-    10) print_dotig_help ;;
+    8) print_dirty_expanded ;;
+    9) check_dotig_updates ;;
+    10) print_dotig_version ;;
+    11) print_dotig_help ;;
     [qQ]) exit ;;
     *) printf "\n%sError:%s Invalid choice. Try again.\n" "$_color_error" "$_color_reset" ;;
     esac
@@ -1881,10 +1928,15 @@ call_get_repo_status() {
 
   if [ $# -eq 0 ]; then
     get_repo_status
-  elif is_command_help "$1"; then
-    print_status_help
   else
-    invalid_usage "status"
+    case $1 in
+      -h|--help) print_status_help ;;
+      -e|--expanded)
+        _show_dirty_filenames="true"
+        get_repo_status
+        ;;
+      *) invalid_usage "status"
+    esac
   fi
 }
 
