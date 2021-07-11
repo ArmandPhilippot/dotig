@@ -187,6 +187,16 @@ is_verbose() {
   [ "$_verbose" = "true" ]
 }
 
+# Check if the provided path is an existent directory.
+# Argument 1: the path to test
+is_valid_backup_path() {
+  local _valid_backup_path=$1
+
+  [ ! "$_valid_backup_path" ] && error_backup_path
+  [ ! -d "$_valid_backup_path" ] && error_backup_path
+  return 0
+}
+
 ###############################################################################
 # Error Helpers
 # Functions to handle the various error messages.
@@ -225,9 +235,17 @@ invalid_usage() {
   exit 1
 }
 
-# Display an error if $DOTFILES (backup path) is not defined then exit.
+# Display an error if the dotfiles repository is not defined then exit.
 error_backup_path() {
-  printf "%sError:%s \$DOTFILES must be set to use Dotig command line interface.\n" "$_color_error" "$_color_reset"
+  local _env_var
+
+  if [ "$_private_dotfiles" = "true" ]; then
+    _env_var="\$DOTFILES_PRIVATE"
+  else
+    _env_var="\$DOTFILES"
+  fi
+
+  printf "%sError:%s %s must be set to use Dotig command line interface.\n" "$_color_error" "$_color_reset" "$_env_var"
   printf "See CONFIGURATION in \`dotig --help\` or \`dotig -h\`.\n"
   exit 1
 }
@@ -2072,9 +2090,12 @@ call_get_repo_status() {
 # Require 1 or more arguments.
 # Argument 1: a valid command.
 handle_dotig_cli_commands() {
-  [ ! "$DOTFILES" ] && error_backup_path
-  [ ! -d "$DOTFILES" ] && error_backup_path
-  DOTIG_PATH="$DOTFILES"
+  if [ "$_private_dotfiles" = "true" ]; then
+    is_valid_backup_path "$DOTFILES_PRIVATE" && DOTIG_PATH="$DOTFILES_PRIVATE"
+  else
+    is_valid_backup_path "$DOTFILES" && DOTIG_PATH="$DOTFILES"
+  fi
+
   _disable_menu="true"
 
   case $DOTIG_PATH in
