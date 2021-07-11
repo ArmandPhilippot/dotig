@@ -70,6 +70,7 @@ _color_warning=$(printf '\e[33m')
 _disable_menu="false"
 _show_repo_status="true"
 _verbose="false"
+_private_dotfiles="false"
 
 # Update symlinks parameters
 _ignore_duplicate="false"
@@ -494,21 +495,29 @@ check_requirements() {
 # Return the path to use.
 check_backup_path() {
   local _backup_path
+  local _dotfiles_path
 
-  is_verbose && printf "For conveniance, Dotig uses a \$DOTFILES variable to determine the dotfiles backup path. If it is not set, you may want to declare it for future use.\n\n"
-  printf "Checking if a \$DOTFILES variable is set...\n"
+  is_verbose && printf "For conveniance, Dotig uses a \$DOTFILES variable to determine the dotfiles backup path and a \$DOTFILES_PRIVATE variable to determine your private dotfiles.\n"
+  is_verbose && printf "If they are not set, you may want to declare them for future use.\n\n"
+  printf "Checking if your dotfiles repository is set in your shell...\n"
 
-  if [ ! "$DOTFILES" ]; then
-    printf "%sWarning:%s The \$DOTFILES variable is not set.\n" "$_color_warning" "$_color_reset"
+  if [ "$_private_dotfiles" = "true" ]; then
+    _dotfiles_path=$DOTFILES_PRIVATE
+  else
+    _dotfiles_path=$DOTFILES
+  fi
+
+  if [ ! "$_dotfiles_path" ]; then
+    printf "%sWarning:%s You did not define your dotfiles repository in your shell configuration files.\n" "$_color_warning" "$_color_reset"
     set_path _backup_path
     is_correct_path _backup_path
-  elif [ ! -d "$DOTFILES" ]; then
-    printf "%sWarning:%s The \$DOTFILES variable does not seem to match a directory.\n" "$_color_warning" "$_color_reset"
+  elif [ ! -d "$_dotfiles_path" ]; then
+    printf "%sWarning:%s The path provided in your shell configuration files does not seem to match a directory.\n" "$_color_warning" "$_color_reset"
     set_path _backup_path
     is_correct_path _backup_path
   else
-    is_verbose && printf "%sSuccess:%s Found \$DOTFILES variable.\n" "$_color_success" "$_color_reset"
-    _backup_path=$DOTFILES
+    is_verbose && printf "%sSuccess:%s Found your dotfiles repository.\n" "$_color_success" "$_color_reset"
+    _backup_path=$_dotfiles_path
     get_absolute_path _backup_path
 
     case $_backup_path in
@@ -518,6 +527,7 @@ check_backup_path() {
 
     is_correct_path _backup_path
   fi
+
 
   eval "$1=$_backup_path"
 }
@@ -1492,39 +1502,43 @@ dotig <COMMANDS> [OPTIONS] [<FILES...>]
 Dotig is a dotfiles manager to quickly setup your machine & synchronize your dotfiles with Git.
 
 # COMMANDS
-add               Add new dotfiles and create symlinks.
-                  Accept both absolute and relative paths.
-update            Update all symlinks.
-commit            Use Git to commit all changes.
-push              Use Git to push all changes.
-pull              Use Git to pull changes from remote.
-submodule         Update Git submodules.
-rm                Replace all symlinks with the original file.
-                  The original will be conserved in your repository.
-status            Display the status of your dotfiles repository.
-                  Check for dirty files and if push or pull is needed.
+add                 Add new dotfiles and create symlinks.
+                    Accept both absolute and relative paths.
+update              Update all symlinks.
+commit              Use Git to commit all changes.
+push                Use Git to push all changes.
+pull                Use Git to pull changes from remote.
+submodule           Update Git submodules.
+rm                  Replace all symlinks with the original file.
+                    The original will be conserved in your repository.
+status              Display the status of your dotfiles repository.
+                    Check for dirty files and if push or pull is needed.
 
 # OPTIONS
--h, --help        Print this help. If used after a command, you can print help
-                  for this command.
--ns, --no-status  Do not show the repo status.
--v, --verbose     Explain what is done.
---version         Print Dotig version and check for new releases.
+-h, --help          Print this help. If used after a command, you can print help
+                    for this command.
+-ns, --no-status    Do not show the repo status.
+-p, --private       Use your private dotfiles repository instead of the default.
+-v, --verbose       Explain what is done.
+--version           Print Dotig version and check for new releases.
 
 # CONFIGURATION
-DOTFILES          Environment variable to define the path of your dotfiles
-                  repository. You need to declare its value in your shell
-                  configuration files.
-                  For example in .profile for Bash or .zshenv for Zsh.
-                  Current value: $DOTFILES
+DOTFILES            Environment variable to define the path of your dotfiles
+                    repository.
+                    Current value: $DOTFILES
+DOTFILES_PRIVATE    Environment variable to define the path of your private
+                    dotfiles repository.
+                    Current value: $DOTFILES_PRIVATE
+
+You need to declare these values in your shell configuration files. For example in .profile for Bash or .zshenv for Zsh.
 
 # BUGS
 If you find any bug, you can report it on https://github.com/ArmandPhilippot/dotig/issues.
 
 # ABOUT
-Version           Dotig $DOTIG_VERSION
-License           MIT
-Project URL       https://github.com/ArmandPhilippot/dotig
+Version             Dotig $DOTIG_VERSION
+License             MIT
+Project URL         https://github.com/ArmandPhilippot/dotig
 EOF
 
   return_menu
@@ -2103,6 +2117,9 @@ set_dotig_options() {
     --no-status|-ns)
       _show_repo_status="false"
       ;;
+    --private|-p)
+      _private_dotfiles="true"
+      ;;
     --verbose|-v)
       _verbose="true"
       ;;
@@ -2121,6 +2138,10 @@ set_dotig_options() {
       case $1 in
       --no-status|-ns)
         _show_repo_status="false"
+        shift
+        ;;
+      --private|-p)
+        _private_dotfiles="true"
         shift
         ;;
       --verbose|-v)
