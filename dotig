@@ -248,7 +248,7 @@ get_current_branch() {
 get_upstream_branch() {
   local _git_branch
   _git_branch=$(get_current_branch)
-  git -C "$DOTIG_PATH" config branch."$_git_branch".remote > /dev/null 2>&1
+  git -C "$DOTIG_PATH" config branch."$_git_branch".remote 2> /dev/null
 }
 
 # Return a list of existing Git remotes.
