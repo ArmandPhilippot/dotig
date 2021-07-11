@@ -197,6 +197,25 @@ is_valid_backup_path() {
   return 0
 }
 
+# Add a trailing slash to the path if it is missing.
+normalize_dotig_path() {
+  case $DOTIG_PATH in
+    */) : ;;
+    *) DOTIG_PATH="${DOTIG_PATH}/"
+  esac
+}
+
+# Set DOTIG_PATH with the correct format.
+# Argument 1: the path to use for DOTIG_PATH
+set_dotig_path() {
+  [ $# -ne 1 ] && error_unexpected
+
+  local _tmp_path=$1
+
+  is_valid_backup_path "$_tmp_path" && DOTIG_PATH=$_tmp_path
+  normalize_dotig_path
+}
+
 ###############################################################################
 # Error Helpers
 # Functions to handle the various error messages.
@@ -1566,14 +1585,14 @@ EOF
 print_add_help() {
   cat <<EOF
 # USAGE
-dotig add [OPTIONS]
-dotig add [<FILES...>]
+dotig add [OPTIONS] [<FILES...>]
 
 # DESCRIPTION
 The add command allows Dotig to copy your dotfiles inside your backup directory then to symlink them. You can provide one or more files. If it is a directory, the files inside will be processed.
 
 # OPTIONS
 -h, --help        Print this help.
+-p, --private     Use your private dotfiles repository instead of the default.
 
 # BUGS
 If you find any bug, you can report it on https://github.com/ArmandPhilippot/dotig/issues.
@@ -1606,6 +1625,8 @@ It only handles files in home directory. If your repo contains files outside you
                           already exists.
 -it, --ignore-target      Always skip symlinking when a symlink already exists
                           even if the target is not the same.
+-p, --private             Use your private dotfiles repository instead of the
+                          default.
 
 # BUGS
 If you find any bug, you can report it on https://github.com/ArmandPhilippot/dotig/issues.
@@ -1632,6 +1653,7 @@ The commit command allows Dotig to staged all changes in your repository (untrac
 -h, --help        Print this help.
 -m, --message     Use the given string as commit message. If used with another
                   option, the message must follow the -m or --message option.
+-p, --private     Use your private dotfiles repository instead of the default.
 -t, --tracked     Commit only tracked files. Ignore untracked.
 -u, --untracked   Commit only untracked files. Ignore others (i.e. modified or
                   deleted).
@@ -1659,6 +1681,7 @@ The push command allows Dotig to push all the commits to your remote repository.
 
 # OPTIONS
 -h, --help        Print this help.
+-p, --private     Use your private dotfiles repository instead of the default.
 
 # BUGS
 If you find any bug, you can report it on https://github.com/ArmandPhilippot/dotig/issues.
@@ -1683,6 +1706,7 @@ The pull command allows Dotig to fetch your remote repository then to merge all 
 
 # OPTIONS
 -h, --help        Print this help.
+-p, --private     Use your private dotfiles repository instead of the default.
 
 # BUGS
 If you find any bug, you can report it on https://github.com/ArmandPhilippot/dotig/issues.
@@ -1707,6 +1731,7 @@ If you are using git submodules inside your dotfiles repository, the submodule c
 
 # OPTIONS
 -h, --help        Print this help.
+-p, --private     Use your private dotfiles repository instead of the default.
 
 # BUGS
 If you find any bug, you can report it on https://github.com/ArmandPhilippot/dotig/issues.
@@ -1731,6 +1756,7 @@ The rm command allows Dotig to replace all the symlinks in your \$HOME whose tar
 
 # OPTIONS
 -h, --help        Print this help.
+-p, --private     Use your private dotfiles repository instead of the default.
 
 # BUGS
 If you find any bug, you can report it on https://github.com/ArmandPhilippot/dotig/issues.
@@ -1758,6 +1784,7 @@ This command will tell you if you need to pull or push changes. If your reposito
 -e, --expanded    If your local repository is dirty, print the concerned files
                   by category (i.e. modified files, deleted files...).
 -h, --help        Print this help.
+-p, --private     Use your private dotfiles repository instead of the default.
 
 # BUGS
 If you find any bug, you can report it on https://github.com/ArmandPhilippot/dotig/issues.
@@ -1879,57 +1906,63 @@ is_command_help() {
 
 # Handle options for the add dotfiles command before calling it.
 call_add_dotfiles() {
-  case $1 in
-    --help|-h)
+  if is_command_help "$1"; then
       [ $# -gt 1 ] && invalid_usage "add"
       print_add_help
-      ;;
-    --verbose|-v)
-      _verbose="true"
-      shift
-      ;;
-  esac
+  else
+    while [ $# -ge 1 ]; do
+      case $1 in
+        --private|-p)
+          _private_dotfiles="true"
+          set_dotig_path "$DOTFILES_PRIVATE"
+          shift
+          ;;
+        --verbose|-v)
+          _verbose="true"
+          shift
+          ;;
+      esac
+    done
 
-  add_dotfiles "$@"
+    add_dotfiles "$@"
+  fi
 }
 
 # Handle options for the update symlinks command before calling it.
 call_update_symlinks() {
-  if [ $# -eq 0 ]; then
-    update_symlinks
+  if is_command_help "$1"; then
+    [ $# -gt 1 ] && invalid_usage "update"
+    print_update_help
   else
-    if is_command_help "$1"; then
-      if [ $# -eq 1 ]; then
-        print_update_help
-      else
-        invalid_usage "update"
-      fi
-    else
-      while [ $# -ge 1 ]; do
-        case $1 in
-          --ignore-all|-ia)
-            _ignore_duplicate="true"
-            _ignore_symlink_different_target="true"
-            shift
-            ;;
-          --ignore-duplicate|-id)
-            _ignore_duplicate="true"
-            shift
-            ;;
-          --ignore-target|-it)
-            _ignore_symlink_different_target="true"
-            shift
-            ;;
-          --verbose|-v)
-            _verbose="true"
-            shift
-            ;;
-          *) invalid_usage "update"
-        esac
-      done
+    while [ $# -ge 1 ]; do
+      case $1 in
+        --ignore-all|-ia)
+          _ignore_duplicate="true"
+          _ignore_symlink_different_target="true"
+          shift
+          ;;
+        --ignore-duplicate|-id)
+          _ignore_duplicate="true"
+          shift
+          ;;
+        --ignore-target|-it)
+          _ignore_symlink_different_target="true"
+          shift
+          ;;
+        --private|-p)
+          _private_dotfiles="true"
+          set_dotig_path "$DOTFILES_PRIVATE"
+          shift
+          ;;
+        --verbose|-v)
+          _verbose="true"
+          shift
+          ;;
+        *) invalid_usage "update"
+      esac
+    done
 
-      update_symlinks
-    fi
+    update_symlinks
   fi
 }
 
@@ -1937,20 +1970,20 @@ call_update_symlinks() {
 call_commit_changes() {
   local _commit_message
 
-  if [ $# -eq 0 ]; then
-    commit_changes
-  elif is_command_help "$1"; then
-    if [ $# -eq 1 ]; then
-      print_commit_help
-    else
-      invalid_usage "commit"
-    fi
+  if is_command_help "$1"; then
+    [ $# -gt 1 ] && invalid_usage "commit"
+    print_commit_help
   else
     while [ $# -ge 1 ]; do
       case $1 in
       --message|-m)
         shift
         _commit_message="$1"
+        shift
+        ;;
+      --private|-p)
+        _private_dotfiles="true"
+        set_dotig_path "$DOTFILES_PRIVATE"
         shift
         ;;
       --tracked|-t)
@@ -1979,19 +2012,24 @@ call_commit_changes() {
 
 # Handle options for the push changes command before calling it.
 call_push_changes() {
-  [ $# -gt 1 ] && invalid_usage "push"
-
-  if [ $# -eq 0 ]; then
-    push_changes
+  if is_command_help "$1"; then
+    [ $# -gt 1 ] && invalid_usage "push"
+    print_push_help
   else
-    case $1 in
-    --help|-h) print_push_help ;;
-    --verbose|-v)
+    while [ $# -ge 1 ]; do
+      case $1 in
+      --private|-p)
+        _private_dotfiles="true"
+        set_dotig_path "$DOTFILES_PRIVATE"
+        shift
+        ;;
+      --verbose|-v)
         _verbose="true"
         shift
         ;;
-    *) invalid_usage "push"
-    esac
+      *) invalid_usage "push"
+      esac
+    done
 
     push_changes
   fi
@@ -1999,19 +2037,24 @@ call_push_changes() {
 
 # Handle options for the pull changes command before calling it.
 call_pull_changes() {
-  [ $# -gt 1 ] && invalid_usage "pull"
-
-  if [ $# -eq 0 ]; then
-    pull_changes
+  if is_command_help "$1"; then
+    [ $# -gt 1 ] && invalid_usage "pull"
+    print_pull_help
   else
-    case $1 in
-    --help|-h) print_pull_help ;;
-    --verbose|-v)
+    while [ $# -ge 1 ]; do
+      case $1 in
+      --private|-p)
+        _private_dotfiles="true"
+        set_dotig_path "$DOTFILES_PRIVATE"
+        shift
+        ;;
+      --verbose|-v)
         _verbose="true"
         shift
         ;;
-    *) invalid_usage "pull"
-    esac
+      *) invalid_usage "pull"
+      esac
+    done
 
     pull_changes
   fi
@@ -2019,19 +2062,24 @@ call_pull_changes() {
 
 # Handle options for the update submodules command before calling it.
 call_update_all_submodules() {
-  [ $# -gt 1 ] && invalid_usage "submodule"
-
-  if [ $# -eq 0 ]; then
-    update_all_submodules
+  if is_command_help "$1"; then
+    [ $# -gt 1 ] && invalid_usage "submodule"
+    print_submodule_help
   else
-    case $1 in
-    --help|-h) print_submodule_help ;;
-    --verbose|-v)
+    while [ $# -ge 1 ]; do
+      case $1 in
+      --private|-p)
+        _private_dotfiles="true"
+        set_dotig_path "$DOTFILES_PRIVATE"
+        shift
+        ;;
+      --verbose|-v)
         _verbose="true"
         shift
         ;;
-    *) invalid_usage "submodule"
-    esac
+      *) invalid_usage "submodule"
+      esac
+    done
 
     update_all_submodules
   fi
@@ -2039,19 +2087,24 @@ call_update_all_submodules() {
 
 # Handle options for the remove symlinks command before calling it.
 call_remove_symlinks() {
-  [ $# -gt 1 ] && invalid_usage "rm"
-
-  if [ $# -eq 0 ]; then
-    remove_symlinks
+  if is_command_help "$1"; then
+    [ $# -gt 1 ] && invalid_usage "rm"
+    print_remove_help
   else
-    case $1 in
-    --help|-h) print_remove_help ;;
-    --verbose|-v)
+    while [ $# -ge 1 ]; do
+      case $1 in
+      --private|-p)
+        _private_dotfiles="true"
+        set_dotig_path "$DOTFILES_PRIVATE"
+        shift
+        ;;
+      --verbose|-v)
         _verbose="true"
         shift
         ;;
-    *) invalid_usage "rm"
-    esac
+      *) invalid_usage "rm"
+      esac
+    done
 
     remove_symlinks
   fi
@@ -2059,19 +2112,19 @@ call_remove_symlinks() {
 
 # Handle options for the get repo status command before calling it.
 call_get_repo_status() {
-  if [ $# -eq 0 ]; then
-    get_repo_status
-  elif is_command_help "$1"; then
-    if [ $# -eq 1 ]; then
-      print_commit_help
-    else
-      invalid_usage "status"
-    fi
+  if is_command_help "$1"; then
+    [ $# -gt 1 ] && invalid_usage "status"
+    print_status_help
   else
     while [ $# -ge 1 ]; do
       case $1 in
         --expanded|-e)
           _show_dirty_filenames="true"
+          shift
+          ;;
+        --private|-p)
+          _private_dotfiles="true"
+          set_dotig_path "$DOTFILES_PRIVATE"
           shift
           ;;
         --verbose|-v)
@@ -2091,17 +2144,12 @@ call_get_repo_status() {
 # Argument 1: a valid command.
 handle_dotig_cli_commands() {
   if [ "$_private_dotfiles" = "true" ]; then
-    is_valid_backup_path "$DOTFILES_PRIVATE" && DOTIG_PATH="$DOTFILES_PRIVATE"
+    set_dotig_path "$DOTFILES_PRIVATE"
   else
-    is_valid_backup_path "$DOTFILES" && DOTIG_PATH="$DOTFILES"
+    set_dotig_path "$DOTFILES"
   fi
 
   _disable_menu="true"
-
-  case $DOTIG_PATH in
-    */) : ;;
-    *) DOTIG_PATH="${DOTIG_PATH}/"
-  esac
 
   set_xdg_paths
 
