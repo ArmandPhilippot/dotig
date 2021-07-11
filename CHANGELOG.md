@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.1.1](https://github.com/ArmandPhilippot/dotig/compare/v1.1.0...v1.1.1) (2021-07-11)
+
+
+### Bug Fixes
+
+* push commit to upstream branch ([f3f68ed](https://github.com/ArmandPhilippot/dotig/commit/f3f68edacaba028a0cdd10a6239dbaca9d4d3b46))
+
 ## [1.1.0](https://github.com/ArmandPhilippot/dotig/compare/v1.0.0...v1.1.0) (2021-07-11)
 
 
