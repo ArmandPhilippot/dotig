@@ -2,24 +2,27 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
-## Unreleased
+## [1.1.0](https://github.com/ArmandPhilippot/dotig/compare/v1.0.0...v1.1.0) (2021-07-11)
+
 
 ### Features
 
-* add help menu for each commands
-* **update:** add an option to skip existing files
-* **update:** add an option to skip symlinks with a different target
-* **update:** add an option to skip all conflicting files
-* print a different invalid usage message depending on the command
-* **status:** add an option to list the dirty files either through the menu or CLI
-* **commit:** add an option to provide the commit message
-* **commit:** add an option to commit only tracked files
-* **commit:** add an option to commit only untracked files
+* add a verbose option for each command ([b00f7f6](https://github.com/ArmandPhilippot/dotig/commit/b00f7f62daaf868108e7a98e0ca0fb9cb107cf47))
+* **commit:** add an option to commit only tracked files ([66e7dc3](https://github.com/ArmandPhilippot/dotig/commit/66e7dc3cec545330554b30065428604bcec40812))
+* **commit:** add an option to commit only untracked files ([0e9b060](https://github.com/ArmandPhilippot/dotig/commit/0e9b0603e35288931b58de90a8bf6ed297646d70))
+* **commit:** add an option to provide the commit msg from CLI ([0b78e2f](https://github.com/ArmandPhilippot/dotig/commit/0b78e2fcaac8dcb7ad4c654084fbe808592e6abb))
+* **status:** add an option to list the dirty files ([01c80d0](https://github.com/ArmandPhilippot/dotig/commit/01c80d08a7dcf950dfbe6f08ebff13557775ba26))
+* print a different invalid usage message depending on the command ([16c1efd](https://github.com/ArmandPhilippot/dotig/commit/16c1efda8cc24826911e055f44f5533254bc5682))
+* **update:** add an option to always skip duplicate files ([9fee271](https://github.com/ArmandPhilippot/dotig/commit/9fee27123e935acf2f50d916d97a4596fac1e886))
+* **update:** add an option to skip all conflicts ([4b0a203](https://github.com/ArmandPhilippot/dotig/commit/4b0a203b909a72f2c73b34f05514aca90febea6b))
+* **update:** add an option to skip conflict when target is different ([294ecb4](https://github.com/ArmandPhilippot/dotig/commit/294ecb48996fc24ce837bb381cfb17084da18b20))
+* add help menu for each commands ([ca3b39b](https://github.com/ArmandPhilippot/dotig/commit/ca3b39ba0367fabea24346c25b62867ccad9fc82))
+
 
 ### Bug Fixes
 
-* enforce trailing slash for $DOTFILES path in CLI commands
-* **add:** display filename if it is not a file 
+* enforce trailing slash for $DOTFILES path in CLI commands ([dc2e9fb](https://github.com/ArmandPhilippot/dotig/commit/dc2e9fb90aa8abb0f440369d809467f4694acab2))
+* **add:** display filename if it is not a file ([7e7f4fc](https://github.com/ArmandPhilippot/dotig/commit/7e7f4fcd59361d2945ddbe6b6160dbd0a49ad7da))
 
 ## [1.0.0](https://github.com/ArmandPhilippot/dotig/compare/v0.1.0...v1.0.0) (2021-06-30)
 
