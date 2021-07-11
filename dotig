@@ -1488,7 +1488,7 @@ print_dotig_help() {
   cat <<EOF
 # USAGE
 dotig [OPTIONS]
-dotig [-v|--verbose] <COMMANDS> [<FILES...>]
+dotig <COMMANDS> [OPTIONS] [<FILES...>]
 
 # DESCRIPTION
 Dotig is a dotfiles manager to quickly setup your machine & synchronize your dotfiles with Git.
@@ -1507,7 +1507,8 @@ status            Display the status of your dotfiles repository.
                   Check for dirty files and if push or pull is needed.
 
 # OPTIONS
--h, --help        Print this help.
+-h, --help        Print this help. If used after a command, you can print help
+                  for this command.
 -ns, --no-status  Do not show the repo status.
 -v, --verbose     Explain what is done.
 --version         Print Dotig version and check for new releases.
@@ -1536,7 +1537,7 @@ print_add_help() {
   cat <<EOF
 # USAGE
 dotig add [OPTIONS]
-dotig add [<files...>]
+dotig add [<FILES...>]
 
 # DESCRIPTION
 The add command allows Dotig to copy your dotfiles inside your backup directory then to symlink them. You can provide one or more files. If it is a directory, the files inside will be processed.
@@ -1720,11 +1721,12 @@ print_status_help() {
 dotig status [OPTIONS]
 
 # DESCRIPTION
-The status command allows Dotig to display information about your repository status. It will check if your repository is up to date and clean. You can also see if you need to pull or push changes. If your repository is dirty it will print some information to help you know why by displaying the number of modified, staged, removed or untracked files.
+The status command allows Dotig to display information about your repository status. It will check if your repository is up to date and clean.
+This command will tell you if you need to pull or push changes. If your repository is dirty it will also print some information to help you know why by displaying the number of modified, staged, removed or untracked files.
 
 # OPTIONS
 -e, --expanded    If your local repository is dirty, print the concerned files
-                  by category.
+                  by category (i.e. modified files, deleted files...).
 -h, --help        Print this help.
 
 # BUGS
