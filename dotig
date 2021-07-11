@@ -2103,36 +2103,22 @@ handle_dotig_cli_commands() {
 }
 
 # Set Dotig options according to the arguments passed through CLI
-# Require at least one argument. # Additional arguments are valid in some cases.
+# Require at least one argument.
+# Additional arguments are valid in some cases.
 set_dotig_options() {
   [ $# -eq 0 ] && error_unexpected
 
-  if [ $# -eq 1 ]; then
-    case $1 in
-    --help|-h)
-      _disable_menu="true"
-      print_dotig_help
-      exit
-      ;;
-    --no-status|-ns)
-      _show_repo_status="false"
-      ;;
-    --private|-p)
-      _private_dotfiles="true"
-      ;;
-    --verbose|-v)
-      _verbose="true"
-      ;;
-    --version)
-      _disable_menu="true"
-      print_dotig_version
-      check_dotig_updates
-      exit
-      ;;
-    *) invalid_usage ;;
-    esac
-
-    main
+  if is_command_help "$1"; then
+    [ $# -gt 1 ] && invalid_usage
+    _disable_menu="true"
+    print_dotig_help
+    exit
+  elif [ "$1" = "--version" ]; then
+    [ $# -gt 1 ] && invalid_usage
+    _disable_menu="true"
+    print_dotig_version
+    check_dotig_updates
+    exit
   else
     while [ $# -ge 1 ]; do
       case $1 in
