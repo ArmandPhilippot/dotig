@@ -1169,9 +1169,7 @@ remove_broken_symlinks() {
 
     printf "%sSuccess:%s All broken symlinks removed...\n" "$_color_success" "$_color_reset"
   else
-    if is_verbose; then
       printf "No broken symlinks found.\n"
-    fi
   fi
 
   rm "$_tmp"
