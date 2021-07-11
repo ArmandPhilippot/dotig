@@ -1169,9 +1169,7 @@ remove_broken_symlinks() {
 
     printf "%sSuccess:%s All broken symlinks removed...\n" "$_color_success" "$_color_reset"
   else
-    if is_verbose; then
       printf "No broken symlinks found.\n"
-    fi
   fi
 
   rm "$_tmp"
@@ -1849,12 +1847,18 @@ is_command_help() {
 
 # Handle options for the add dotfiles command before calling it.
 call_add_dotfiles() {
-  if is_command_help "$1"; then
-    [ $# -gt 1 ] && invalid_usage "add"
-    print_add_help
-  else
-    add_dotfiles "$@"
-  fi
+  case $1 in
+    --help|-h)
+      [ $# -gt 1 ] && invalid_usage "add"
+      print_add_help
+      ;;
+    --verbose|-v)
+      _verbose="true"
+      shift
+      ;;
+  esac
+
+  add_dotfiles "$@"
 }
 
 # Handle options for the update symlinks command before calling it.
@@ -1882,6 +1886,10 @@ call_update_symlinks() {
             ;;
           --ignore-target|-it)
             _ignore_symlink_different_target="true"
+            shift
+            ;;
+          --verbose|-v)
+            _verbose="true"
             shift
             ;;
           *) invalid_usage "update"
@@ -1921,6 +1929,10 @@ call_commit_changes() {
         _commit_files="untracked"
         shift
         ;;
+      --verbose|-v)
+        _verbose="true"
+        shift
+        ;;
       *) invalid_usage "commit" ;;
       esac
     done
@@ -1939,10 +1951,17 @@ call_push_changes() {
 
   if [ $# -eq 0 ]; then
     push_changes
-  elif is_command_help "$1"; then
-    print_push_help
   else
-    invalid_usage "push"
+    case $1 in
+    --help|-h) print_push_help ;;
+    --verbose|-v)
+        _verbose="true"
+        shift
+        ;;
+    *) invalid_usage "push"
+    esac
+
+    push_changes
   fi
 }
 
@@ -1952,10 +1971,17 @@ call_pull_changes() {
 
   if [ $# -eq 0 ]; then
     pull_changes
-  elif is_command_help "$1"; then
-    print_pull_help
   else
-    invalid_usage "pull"
+    case $1 in
+    --help|-h) print_pull_help ;;
+    --verbose|-v)
+        _verbose="true"
+        shift
+        ;;
+    *) invalid_usage "pull"
+    esac
+
+    pull_changes
   fi
 }
 
@@ -1965,10 +1991,17 @@ call_update_all_submodules() {
 
   if [ $# -eq 0 ]; then
     update_all_submodules
-  elif is_command_help "$1"; then
-    print_submodule_help
   else
-    invalid_usage "submodule"
+    case $1 in
+    --help|-h) print_submodule_help ;;
+    --verbose|-v)
+        _verbose="true"
+        shift
+        ;;
+    *) invalid_usage "submodule"
+    esac
+
+    update_all_submodules
   fi
 }
 
@@ -1978,28 +2011,46 @@ call_remove_symlinks() {
 
   if [ $# -eq 0 ]; then
     remove_symlinks
-  elif is_command_help "$1"; then
-    print_remove_help
   else
-    invalid_usage "rm"
+    case $1 in
+    --help|-h) print_remove_help ;;
+    --verbose|-v)
+        _verbose="true"
+        shift
+        ;;
+    *) invalid_usage "rm"
+    esac
+
+    remove_symlinks
   fi
 }
 
 # Handle options for the get repo status command before calling it.
 call_get_repo_status() {
-  [ $# -gt 1 ] && invalid_usage "status"
-
   if [ $# -eq 0 ]; then
     get_repo_status
+  elif is_command_help "$1"; then
+    if [ $# -eq 1 ]; then
+      print_commit_help
+    else
+      invalid_usage "status"
+    fi
   else
-    case $1 in
-      -h|--help) print_status_help ;;
-      -e|--expanded)
-        _show_dirty_filenames="true"
-        get_repo_status
-        ;;
-      *) invalid_usage "status"
-    esac
+    while [ $# -ge 1 ]; do
+      case $1 in
+        --expanded|-e)
+          _show_dirty_filenames="true"
+          shift
+          ;;
+        --verbose|-v)
+          _verbose="true"
+          shift
+          ;;
+        *) invalid_usage "status"
+      esac
+    done
+
+    get_repo_status
   fi
 }
 
