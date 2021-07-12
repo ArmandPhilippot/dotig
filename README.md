@@ -119,6 +119,7 @@ If you want to use Dotig from CLI, you need to set the `DOTFILES` environment va
 |---|---|---|
 |`-h`<br />`--help`|`dotig -h`<br />`dotig --help`|Show Dotig help.|
 |`-ns`<br />`--no-status`|`dotig -ns`<br />`dotig --no-status`|Do not display the repo status when opening the Dotig menu.|
+|`-p`<br />`--private`|`dotig -p [<command>]`<br />`dotig --private [<command>]`|Use your private dotfiles repository instead of the default one.|
 |`-v`<br />`--verbose`|`dotig -v`<br />`dotig --verbose`|Verbose mode. Explain what is done.|
 |`--version`|`dotig --version`|Show Dotig version and check for new release.|
 
@@ -132,6 +133,14 @@ Example:
 
 ```bash
 export DOTFILES="$HOME/.dotfiles"
+```
+
+Sometimes we also need to manage secrets (i.e. credentials for example) or we do not want to share some dotfiles. So Dotig allows you to manage a secondary repository. To do so, you need to define an environment variable `DOTFILES_PRIVATE` the same way as `DOTFILES`.
+
+Example:
+
+```bash
+export DOTFILES_PRIVATE="$HOME/.private-dotfiles"
 ```
 
 ## Motivation
