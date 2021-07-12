@@ -14,6 +14,7 @@ Dotig is a shell script, Bash actually, to manage your dotfiles and backup them 
 * pull your remote changes to keep your dotfiles up-to-date
 * update the Git submodules (if you use them)
 * remove the symlinks (by replacing them with a copy of your dotfiles)
+* display a dirty files list by category (i.e. modified, deleted...)
 * check for Dotig updates
 * print Dotig version
 * print Dotig help
@@ -113,15 +114,27 @@ If you want to use Dotig from CLI, you need to set the `DOTFILES` environment va
 |`submodule`|`dotig submodule`|Update all your Git submodules.|
 |`status`|`dotig status`|Show the repo status (dirty files or if push/pull is needed).|
 
-### Options
+### Global Options
 
 |Options|Usage|Description|
 |---|---|---|
 |`-h`<br />`--help`|`dotig -h`<br />`dotig --help`|Show Dotig help.|
 |`-ns`<br />`--no-status`|`dotig -ns`<br />`dotig --no-status`|Do not display the repo status when opening the Dotig menu.|
-|`-p`<br />`--private`|`dotig -p [<command>]`<br />`dotig --private [<command>]`|Use your private dotfiles repository instead of the default one.|
+|`-p`<br />`--private`|`dotig -p`<br />`dotig --private`|Use your private dotfiles repository instead of the default one.|
 |`-v`<br />`--verbose`|`dotig -v`<br />`dotig --verbose`|Verbose mode. Explain what is done.|
 |`--version`|`dotig --version`|Show Dotig version and check for new release.|
+
+Some options, like `--verbose` or `--private` can be used before or after the command. Result will be the same.
+
+Example:
+```
+dotig -v <command>
+dotig <command> -v
+```
+
+### Other options
+
+Each command also has its own options. You can see them with: `dotig <command> -h` or `dotig <command> --help`.
 
 ## Configuration
 
