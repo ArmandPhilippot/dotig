@@ -157,28 +157,17 @@ is_correct_path() {
   done
 }
 
-# Check if a file is in $HOME.
+# Check if a file is in the provided path.
 # Argument 1: the file to test
-is_file_in_home() {
-  [ $# -eq 0 ] && error_unexpected
+# Argument 2: the path
+is_file_in() {
+  [ $# -ne 2 ] && error_unexpected
 
   local _file=$1
+  local _tested_path=$2
 
   case $_file in
-    "$HOME"*) return 0 ;;
-    *) return 1
-  esac
-}
-
-# Check if a file is in $DOTIG_PATH.
-# Argument 1: the file to test
-is_file_in_backup_path() {
-  [ $# -eq 0 ] && error_unexpected
-
-  local _file=$1
-
-  case $_file in
-    "$DOTIG_PATH"*) return 0 ;;
+    "$_tested_path"*) return 0 ;;
     *) return 1
   esac
 }
@@ -1089,7 +1078,7 @@ add_dotfiles() {
       is_verbose && printf "Creating path if not already present...\n"
       mkdir -p "$(dirname "$_backup_dotfile")"
 
-      if is_file_in_home "$_dotfile"; then
+      if is_file_in "$_dotfile" "$HOME"; then
         is_verbose && printf "Moving %s to %s...\n" "$_dotfile" "$_backup_dotfile"
         mv "$_dotfile" "$_backup_dotfile"
         is_verbose && printf "Symlinking %s to %s...\n" "$_backup_dotfile" "$_dotfile"
@@ -1270,7 +1259,7 @@ update_symlinks() {
 
     _dotfile="${_partial_dest}${_backup_dotfile#$_removed_part}"
 
-    if is_file_in_home "$_dotfile"; then
+    if is_file_in "$_dotfile" "$HOME"; then
       if [ -h "$_dotfile" ]; then
         handle_target_update "$_backup_dotfile" "$_dotfile"
       elif [ -f "$_dotfile" ]; then
