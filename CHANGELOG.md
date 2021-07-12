@@ -2,11 +2,12 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
-### Unreleased
+## [1.2.0](https://github.com/ArmandPhilippot/dotig/compare/v1.1.1...v1.2.0) (2021-07-12)
+
 
 ### Features
 
-* manage private dotfiles with Dotig
+* manage private dotfiles with Dotig ([5b9eb83](https://github.com/ArmandPhilippot/dotig/commit/5b9eb83e54e11216f0d20abf16d75c1395942487))
 
 ### [1.1.1](https://github.com/ArmandPhilippot/dotig/compare/v1.1.0...v1.1.1) (2021-07-11)
 
