@@ -1593,6 +1593,7 @@ The add command allows Dotig to copy your dotfiles inside your backup directory 
 # OPTIONS
 -h, --help        Print this help.
 -p, --private     Use your private dotfiles repository instead of the default.
+-v, --verbose     Explain what is done.
 
 # BUGS
 If you find any bug, you can report it on https://github.com/ArmandPhilippot/dotig/issues.
@@ -1627,6 +1628,7 @@ It only handles files in home directory. If your repo contains files outside you
                           even if the target is not the same.
 -p, --private             Use your private dotfiles repository instead of the
                           default.
+-v, --verbose             Explain what is done.
 
 # BUGS
 If you find any bug, you can report it on https://github.com/ArmandPhilippot/dotig/issues.
@@ -1657,6 +1659,7 @@ The commit command allows Dotig to staged all changes in your repository (untrac
 -t, --tracked     Commit only tracked files. Ignore untracked.
 -u, --untracked   Commit only untracked files. Ignore others (i.e. modified or
                   deleted).
+-v, --verbose     Explain what is done.
 
 # BUGS
 If you find any bug, you can report it on https://github.com/ArmandPhilippot/dotig/issues.
@@ -1682,6 +1685,7 @@ The push command allows Dotig to push all the commits to your remote repository.
 # OPTIONS
 -h, --help        Print this help.
 -p, --private     Use your private dotfiles repository instead of the default.
+-v, --verbose     Explain what is done.
 
 # BUGS
 If you find any bug, you can report it on https://github.com/ArmandPhilippot/dotig/issues.
@@ -1707,6 +1711,7 @@ The pull command allows Dotig to fetch your remote repository then to merge all 
 # OPTIONS
 -h, --help        Print this help.
 -p, --private     Use your private dotfiles repository instead of the default.
+-v, --verbose     Explain what is done.
 
 # BUGS
 If you find any bug, you can report it on https://github.com/ArmandPhilippot/dotig/issues.
@@ -1732,6 +1737,7 @@ If you are using git submodules inside your dotfiles repository, the submodule c
 # OPTIONS
 -h, --help        Print this help.
 -p, --private     Use your private dotfiles repository instead of the default.
+-v, --verbose     Explain what is done.
 
 # BUGS
 If you find any bug, you can report it on https://github.com/ArmandPhilippot/dotig/issues.
@@ -1757,6 +1763,7 @@ The rm command allows Dotig to replace all the symlinks in your \$HOME whose tar
 # OPTIONS
 -h, --help        Print this help.
 -p, --private     Use your private dotfiles repository instead of the default.
+-v, --verbose     Explain what is done.
 
 # BUGS
 If you find any bug, you can report it on https://github.com/ArmandPhilippot/dotig/issues.
@@ -1785,6 +1792,7 @@ This command will tell you if you need to pull or push changes. If your reposito
                   by category (i.e. modified files, deleted files...).
 -h, --help        Print this help.
 -p, --private     Use your private dotfiles repository instead of the default.
+-v, --verbose     Explain what is done.
 
 # BUGS
 If you find any bug, you can report it on https://github.com/ArmandPhilippot/dotig/issues.
