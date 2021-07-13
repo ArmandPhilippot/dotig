@@ -1945,6 +1945,7 @@ call_add_dotfiles() {
         _verbose="true"
         shift
         ;;
+      *) break ;;
       esac
     done
 
