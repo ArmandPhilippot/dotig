@@ -272,11 +272,16 @@ get_current_branch() {
   git -C "$DOTIG_PATH" symbolic-ref --quiet --short HEAD
 }
 
-# Return the name of the default/main upstream branch.
-get_upstream_branch() {
+# Return the upstream name for the current branch.
+get_upstream_name() {
   local _git_branch
   _git_branch=$(get_current_branch)
   git -C "$DOTIG_PATH" config branch."$_git_branch".remote 2>/dev/null
+}
+
+# Get the remote branch name of the current repository.
+get_remote_branch() {
+  git -C "$DOTIG_PATH" ls-remote --symref origin HEAD | head -1 | sed 's@ref: refs/heads/@@' | cut -f1
 }
 
 # Return a list of existing Git remotes.
@@ -292,6 +297,13 @@ fetch_remote() {
 # Return the object name of the current commit on the working tree.
 get_local_commit() {
   git -C "$DOTIG_PATH" rev-parse --verify -q HEAD
+}
+
+# Check if the local repo has at least one commit.
+has_local_commit() {
+  local _commit_count
+  _commit_count=$(get_local_commit | wc -l) || true
+  [ "$_commit_count" -ge 1 ]
 }
 
 # Return the object name of the last commit on the remote.
@@ -381,13 +393,13 @@ get_stashed_count() {
 
 # Return the list of unpushed commits.
 get_unpushed_commits() {
-  local _current_branch
-  local _upstream_branch
+  local _remote
+  local _branch
 
-  _current_branch=$(get_current_branch)
-  _upstream_branch=$(get_upstream_branch)
+  _remote=$(get_upstream_name)
+  _branch=$(get_current_branch)
 
-  [ "$_local_commit" ] && git -C "$DOTIG_PATH" log --oneline "$_upstream_branch"/"$_current_branch"..HEAD
+  has_local_commit && git -C "$DOTIG_PATH" log --oneline "$_remote"/"$_branch"..HEAD
 }
 
 # Check if the repo has Git submodules.
@@ -424,11 +436,6 @@ is_git_repo() {
 # Check if the remote is set.
 is_remote_set() {
   git -C "$DOTIG_PATH" config --get-regexp '^remote\.' >/dev/null 2>&1
-}
-
-# Get the remote branch name of the current repository.
-get_remote_branch() {
-  git -C "$DOTIG_PATH" ls-remote --symref origin HEAD | head -1 | sed 's@ref: refs/heads/@@' | cut -f1
 }
 
 ###############################################################################
@@ -628,7 +635,7 @@ set_upstream_branch() {
 
 # Check if the upstream branch is set, if not define it.
 check_upstream() {
-  if ! get_upstream_branch; then
+  if ! get_upstream_name; then
     set_upstream_branch
   fi
 }
