@@ -56,7 +56,7 @@ DOTIG_LOGO=$(
 EOF
 )
 DOTIG_PATH=""
-DOTIG_VERSION="1.2.0"
+DOTIG_VERSION="1.2.1"
 
 # Colors
 _color_choice=$(printf '\e[34m')
