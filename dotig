@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 # Dotig
 # A dotfiles manager to quickly setup your machine & synchronize your dotfiles
@@ -59,12 +59,12 @@ DOTIG_PATH=""
 DOTIG_VERSION="1.2.2"
 
 # Colors
-_color_choice=$(printf '\e[34m')
-_color_error=$(printf '\e[31m')
-_color_output=$(printf '\e[35m')
+_color_blue=$(printf '\e[34m')
+_color_red=$(printf '\e[31m')
+_color_magenta=$(printf '\e[35m')
 _color_reset=$(printf '\e[0m')
-_color_success=$(printf '\e[32m')
-_color_warning=$(printf '\e[33m')
+_color_green=$(printf '\e[32m')
+_color_yellow=$(printf '\e[33m')
 
 # Parameters
 _disable_menu="false"
@@ -81,6 +81,48 @@ _show_dirty_filenames="false"
 
 # Commit parameters
 _commit_files="all"
+
+###############################################################################
+# Colors Helpers
+# Functions to print some messages in color.
+###############################################################################
+
+option() {
+  printf "%s%s%s" "$_color_blue" "$1" "$_color_reset"
+}
+
+highlight() {
+  printf "%s%s%s" "$_color_magenta" "$1" "$_color_reset"
+}
+
+error() {
+  printf "%sError:%s %s\n" "$_color_red" "$_color_reset" "$1"
+}
+
+success() {
+  printf "%sSuccess:%s %s\n" "$_color_green" "$_color_reset" "$1"
+}
+
+warning() {
+  printf "%sWarning:%s %s\n" "$_color_yellow" "$_color_reset" "$1"
+}
+
+skipped() {
+  printf "%sSkipped:%s %s\n" "$_color_yellow" "$_color_reset" "$1"
+}
+
+status() {
+  local _option=$1
+  local _msg=$2
+  local _status_color
+
+  case $_option in
+  -s) _status_color=$_color_green ;;
+  -w) _status_color=$_color_yellow ;;
+  esac
+
+  printf "Status: %s%s%s\n" "$_status_color" "$_msg" "$_color_reset"
+}
 
 ###############################################################################
 # Helpers
@@ -119,7 +161,7 @@ set_path() {
   get_absolute_path _path
 
   while [ ! -d "$_path" ]; do
-    printf "%sError:%s %s is not a directory.\n" "$_color_error" "$_color_reset" "${_color_output}${_path}${_color_reset}"
+    error "$(highlight "$_path") is not a directory."
     printf "Please enter a valid path: "
     read -r -e _path
     get_absolute_path _path
@@ -143,7 +185,7 @@ is_correct_path() {
   local -n _valid_path=$1
 
   while true; do
-    printf "Is %s%s%s correct? %s[y/n]%s " "$_color_output" "$_valid_path" "$_color_reset" "$_color_choice" "$_color_reset"
+    printf "Is %s correct? [$(option "y")/$(option "n")]" "$(highlight "$_valid_path")"
     read -r _validation
     case $_validation in
     [yY])
@@ -152,7 +194,7 @@ is_correct_path() {
     [nN])
       set_path _valid_path
       ;;
-    *) printf "%sError:%s please enter %s[y]%ses or %s[n]%so." "$_color_error" "$_color_reset" "$_color_choice" "$_color_reset" "$_color_choice" "$_color_reset" ;;
+    *) error "Please enter $(option "y") (yes) or $(option "n") (no)." ;;
     esac
   done
 }
@@ -216,7 +258,7 @@ cleanup() {
   is_verbose && printf "\n\nDeleting temporary files...\n"
   rm -f "$_tmp"
   if is_verbose; then
-    printf "%sSuccess:%s Temporary files deleted.\n" "$_color_success" "$_color_reset"
+    success "Temporary files deleted."
     printf "Exit.\n"
   fi
   exit
@@ -224,14 +266,15 @@ cleanup() {
 
 # Display an error in case of an unplanned scenario then exit.
 error_unexpected() {
-  printf "%sAn unexpected error occurred.%s Exit.\n" "$_color_error" "$_color_reset"
+  error "An unexpected error occurred."
+  printf "Exit.\n"
   cleanup
   exit 1
 }
 
 # Display an error in case of invalid usage then exist.
 invalid_usage() {
-  printf "%sError:%s invalid usage.\n" "$_color_error" "$_color_reset"
+  error "Invalid usage."
 
   if [ $# -eq 1 ]; then
     local _command_name=$1
@@ -254,7 +297,7 @@ error_backup_path() {
     _env_var="\$DOTFILES"
   fi
 
-  printf "%sError:%s %s must be set to use Dotig command line interface.\n" "$_color_error" "$_color_reset" "$_env_var"
+  error "$(highlight "$_env_var") must be set to use Dotig command line interface."
   printf "See CONFIGURATION in \`dotig --help\` or \`dotig -h\`.\n"
   exit 1
 }
@@ -453,7 +496,7 @@ set_xdg_paths() {
     XDG_LIB_HOME=${XDG_LIB_HOME:-$HOME/.local/lib}
     XDG_STATE_HOME=${XDG_STATE_HOME:-$HOME/.local/state}
   else
-    printf "%sError:%s Only Linux is supported.\n" "$_color_error" "$_color_reset"
+    error "Only Linux is supported."
     exit 2
   fi
 }
@@ -475,10 +518,10 @@ check_os() {
 
   if is_linux; then
     if is_verbose; then
-      printf "%sSuccess:%s Linux is supported.\n" "$_color_success" "$_color_reset"
+      success "Linux is supported."
     fi
   else
-    printf "%sError:%s Linux is the only supported operating system.\n" "$_color_error" "$_color_reset"
+    error "Linux is the only supported operating system."
     printf "Exit.\n"
     exit 1
   fi
@@ -500,10 +543,10 @@ check_commands() {
 
   if is_git_installed; then
     if is_verbose; then
-      printf "%sSuccess:%s Git is installed.\n" "$_color_success" "$_color_reset"
+      success "Git is installed."
     fi
   else
-    printf "%sError:%s Dotig needs Git to function properly.\n" "$_color_error" "$_color_reset"
+    error "Dotig needs Git to function properly."
     printf "Please install it before using this program.\n"
     printf "Exit.\n"
     exit 1
@@ -511,10 +554,10 @@ check_commands() {
 
   if is_curl_installed; then
     if is_verbose; then
-      printf "%sSuccess:%s curl is installed.\n" "$_color_success" "$_color_reset"
+      success "curl is installed."
     fi
   else
-    printf "%sWarning:%s curl is needed to check for Dotig update. Please install it if you want to use this feature.\n" "$_color_warning" "$_color_reset"
+    warning "curl is needed to check for Dotig update. Please install it if you want to use this feature."
   fi
 }
 
@@ -524,7 +567,7 @@ check_requirements() {
   check_os
   check_commands
   if is_verbose; then
-    printf "%sSuccess:%s Requirements checked!\n" "$_color_success" "$_color_reset"
+    success "Requirements checked!"
     printf "Let's continue.\n\n"
   fi
 }
@@ -552,15 +595,15 @@ check_backup_path() {
   fi
 
   if [ ! "$_dotfiles_path" ]; then
-    printf "%sWarning:%s You did not define your dotfiles repository in your shell configuration files.\n" "$_color_warning" "$_color_reset"
+    warning "You did not define your dotfiles repository in your shell configuration files."
     set_path _backup_path
     is_correct_path _backup_path
   elif [ ! -d "$_dotfiles_path" ]; then
-    printf "%sWarning:%s The path provided in your shell configuration files does not seem to match a directory.\n" "$_color_warning" "$_color_reset"
+    warning "The path provided in your shell configuration files does not seem to match a directory."
     set_path _backup_path
     is_correct_path _backup_path
   else
-    is_verbose && printf "%sSuccess:%s Found your dotfiles repository.\n" "$_color_success" "$_color_reset"
+    is_verbose && success "Dotfiles repository found."
     _backup_path=$_dotfiles_path
     is_correct_path _backup_path
   fi
@@ -591,15 +634,15 @@ ask_remote_name() {
   _git_remotes=$(get_existing_remotes)
   _current_branch=$(get_current_branch)
 
-  printf "%sWarning:%s Your repo contains multiple remotes:\n" "$_color_warning" "$_color_reset"
+  warning "Your repo contains multiple remotes:"
   printf "%s\n" "$_git_remotes"
-  printf "Choose the remote to use for %s: " "${_color_output}${_current_branch}${_color_reset}"
+  printf "Choose the remote to use for %s: " "$(highlight "$_current_branch")"
   read -r _choice
 
   while ! is_valid_remote_name "$_choice" "$_git_remotes"; do
-    printf "\n%sError:%s Remote name invalid.\n" "$_color_error" "$_color_reset"
+    error "Remote name invalid."
     printf "Use one of:\n"
-    printf "%s\n" "${_color_choice}${_git_remotes}${_color_reset}"
+    printf "%s\n" "$(option "$_git_remotes")"
     printf "Enter a valid remote name: "
     read -r _choice
   done
@@ -629,7 +672,7 @@ set_upstream_branch() {
   git -C "$DOTIG_PATH" checkout -t "$_remote_name"/"$_remote_branch"
 
   if is_verbose; then
-    printf "%sSuccess:%s Upstream set.\n" "$_color_success" "$_color_reset"
+    success "Upstream set."
   fi
 }
 
@@ -669,11 +712,11 @@ is_valid_remote() {
   local -n _valid_remote=$1
 
   if [ -n "$_valid_remote" ]; then
-    ! is_valid_remote_url "$_valid_remote" && printf "\n%sError:%s The remote URL is not valid. URL must starts with 'https' or 'git@'.\n" "$_color_error" "$_color_reset" && return 1
+    ! is_valid_remote_url "$_valid_remote" && printf "\n" && error "The remote URL is not valid. URL must starts with $(highlight "https") or $(highlight "git@")." && return 1
 
     printf "\nChecking if this URL exists. Your SSH passphrase can be requested.\n"
 
-    ! is_existing_remote "$_valid_remote" && printf "%sError:%s This remote URL does not exist.\n" "$_color_error" "$_color_reset" && return 1
+    ! is_existing_remote "$_valid_remote" && error "This remote URL does not exist." && return 1
 
     return 0
   else
@@ -695,7 +738,7 @@ set_remote() {
   git -C "$DOTIG_PATH" remote add origin "$_remote"
 
   if is_verbose; then
-    printf "%sSuccess:%s Remote set.\n" "$_color_success" "$_color_reset"
+    success "Remote set."
   fi
 }
 
@@ -703,7 +746,9 @@ set_remote() {
 check_remote() {
   if ! is_remote_set; then
     if is_verbose; then
-      printf "\n%sWarning:%s Dotig is a Git repository but the remote is not set.\n\n" "$_color_warning" "$_color_reset"
+      printf "\n"
+      warning "Dotig is a Git repository but the remote is not set."
+      printf "\n"
     fi
     set_remote
   fi
@@ -719,7 +764,7 @@ init_submodules() {
     update_submodules
 
     if is_verbose; then
-      printf "%sSuccess:%s All submodules have been initialized and updated.\n" "$_color_success" "$_color_reset"
+      success "All submodules have been initialized and updated."
     fi
   fi
 }
@@ -734,10 +779,11 @@ init_git() {
 
 # Ask user if he wants to set the git repo then init git or exit.
 set_git_repo() {
-  printf "\n%sWarning:%s Your dotfiles directory is not a Git repository.\n" "$_color_warning" "$_color_reset"
+  printf "\n"
+  warning "Your dotfiles directory is not a Git repository."
 
   while true; do
-    printf "Do you want to configure it? %s[y/n]%s " "$_color_choice" "$_color_reset"
+    printf "Do you want to configure it? [%s/%s] " "$(option "y")" "$(option "n")"
     read -r _choice
 
     case $_choice in
@@ -746,11 +792,12 @@ set_git_repo() {
       return 0
       ;;
     [nN])
-      printf "\n%sWarning:%s Dotig needs a Git repository to properly function. Please configure it manually before using this program.\n" "$_color_warning" "$_color_reset"
+      printf "\n"
+      warning "Dotig needs a Git repository to properly function. Please configure it manually before using this program."
       printf "Exit.\n"
       exit
       ;;
-    *) printf "%sError:%s Enter %s[y]%ses or %s[n]%sno" "$_color_error" "$_color_reset" "$_color_choice" "$_color_reset" "$_color_choice" "$_color_reset" ;;
+    *) error "Enter $(option "y") (yes) or $(option "n") (no)." ;;
     esac
   done
 }
@@ -775,7 +822,7 @@ is_backup_repo_ready() {
   check_backup_path DOTIG_PATH
   set_dotig_path "$DOTIG_PATH"
   check_git_configuration
-  printf "%sSuccess:%s Your dotfiles repo is ready.\n" "$_color_success" "$_color_reset"
+  success "Your dotfiles repo is ready."
 }
 
 ###############################################################################
@@ -865,21 +912,21 @@ get_repo_status() {
   _common_ancestor=$(get_common_ancestor "$_local_commit" "$_remote_commit") || true
 
   if is_repo_up_to_date "$_local_commit" "$_remote_commit"; then
-    printf "Status: %sup-to-date!%s\n" "$_color_success" "$_color_reset"
+    status -s "up-to-date!"
   else
-    is_pull_needed "$_local_commit" "$_common_ancestor" && printf "Status: %spull needed!%s\n" "$_color_warning" "$_color_reset"
-    is_push_needed "$_remote_commit" "$_common_ancestor" && printf "Status: %spush needed!%s\n" "$_color_warning" "$_color_reset"
+    is_pull_needed "$_local_commit" "$_common_ancestor" && status -w "pull needed!"
+    is_push_needed "$_remote_commit" "$_common_ancestor" && status -w "push needed!"
   fi
 
   if is_repo_dirty; then
-    printf "Status: %sdirty repo!%s\n" "$_color_warning" "$_color_reset"
+    status -w "dirty repo!"
     if [ $_show_dirty_filenames = "true" ]; then
       print_dirty_expanded
     else
       print_dirty_summary
     fi
   else
-    printf "Status: %sclean repo!%s\n" "$_color_success" "$_color_reset"
+    status -s "clean repo!"
   fi
 }
 
@@ -910,25 +957,28 @@ check_dotig_updates() {
   local _not_found
 
   if ! is_curl_installed; then
-    printf "\n%sError:%s curl is needed to check for Dotig update. Please install it.\n" "$_color_error" "$_color_reset"
+    printf "\n"
+    error "curl is needed to check for Dotig update. Please install it."
     return_menu
   fi
 
   _latest_release=$(get_latest_release)
   _not_found=$(printf "%s" "$_latest_release" | { grep -Po '"message": "Not Found"' || true; })
 
-  [ "$_not_found" ] && printf "\n%sError:%s could not find any release...\n" "$_color_error" "$_color_reset" && return_menu
+  [ "$_not_found" ] && printf "\n" && error "Could not find any release..." && return_menu
 
   _tag_name=$(printf "%s" "$_latest_release" | grep -Po '"tag_name":.*?[^\\]",')
   _new_version=$(printf "%s" "$_tag_name" | grep -Po '(?=v).*(?=",)' | sed 's/^v//')
 
   if [ "$_new_version" = "$DOTIG_VERSION" ]; then
-    printf "\n%sSuccess:%s Your Dotig version is up to date!\n" "$_color_success" "$_color_reset"
+    printf "\n"
+    success "Your Dotig version is up to date!"
   else
     _download_zip=$(printf "%s" "$_latest_release" | grep -Po '"zipball_url":.*?[^\\]",')
     _download_link=$(printf "%s" "$_download_zip" | grep -Po 'http.*(?=",)')
 
-    printf "\n%sWarning:%s Your Dotig version is outdated!\n" "$_color_warning" "$_color_reset"
+    printf "\n"
+    warning "Your Dotig version is outdated!"
     printf "A new version is available: %s\n" "$_new_version"
     printf "You can download it here: %s\n" "$_download_link"
   fi
@@ -963,7 +1013,7 @@ print_diff() {
   if diff -q "$_home_dotfile" "$_backup_dotfile" >/dev/null 2>&1; then
     printf "\nBoth files are identical.\n"
   else
-    printf "\nThe two files are different. See the diff of %s:\n\n" "${_color_output}${_filename}${_color_reset}"
+    printf "\nThe two files are different. See the diff of %s:\n\n" "$(highlight "$_filename")"
     printf "%s%0.${_padding_lenght}s%s\n" "$HOME" "$_padding" "$DOTIG_PATH"
     printf "%s\n" "$_divider"
     command diff --color -y --width="$COLUMNS" -t --suppress-common-lines "$_home_dotfile" "$_backup_dotfile" || [ $? -eq 1 ]
@@ -972,10 +1022,10 @@ print_diff() {
 
 # Display the available choices in case of duplicate files.
 print_duplicate_menu() {
-  printf "%s[1]%s Show diff\n" "$_color_choice" "$_color_reset"
-  printf "%s[2]%s Use %s (delete the other)\n" "$_color_choice" "$_color_reset" "${_color_output}${_home_dotfile}${_color_reset}"
-  printf "%s[3]%s Use %s (delete the other)\n" "$_color_choice" "$_color_reset" "${_color_output}${_backup_dotfile}${_color_reset}"
-  printf "%s[4]%s Skip this file\n" "$_color_choice" "$_color_reset"
+  printf "[%s] Show diff\n" "$(option "1")"
+  printf "[%s] Use %s (delete the other)\n" "$(option "2")" "$(highlight "$_home_dotfile")"
+  printf "[%s] Use %s (delete the other)\n" "$(option "3")" "$(highlight "$_backup_dotfile")"
+  printf "[%s] Skip this file\n" "$(option "4")"
 }
 
 # Execute the action specified by the user in case of duplication.
@@ -987,12 +1037,13 @@ handle_duplicate() {
   local _backup_dotfile=$2
 
   if [ $_ignore_duplicate = "true" ]; then
-    printf "\n%sSkipped:%s %s (duplicate)\n" "$_color_warning" "$_color_reset" "$_home_dotfile"
+    skipped "$_home_dotfile (duplicate)"
   else
-    printf "\n%sWarning:%s A file with the same name already exists.\n" "$_color_warning" "$_color_reset"
+    printf "\n"
+    warning "A file with the same name already exists."
 
-    [ -h "$_backup_dotfile" ] && printf "%sWarning:%s %s is a symlink.\n" "$_color_warning" "$_color_reset" "${_color_output}${_backup_dotfile}${_color_reset}"
-    [ -h "$_home_dotfile" ] && printf "%sWarning:%s %s is a symlink.\n" "$_color_warning" "$_color_reset" "${_color_output}${_home_dotfile}${_color_reset}"
+    [ -h "$_backup_dotfile" ] && warning "$(highlight "$_backup_dotfile") is a symlink."
+    [ -h "$_home_dotfile" ] && warning "$(highlight "$_home_dotfile") is a symlink."
 
     printf "How do you want to proceed?\n"
 
@@ -1009,20 +1060,25 @@ handle_duplicate() {
       2)
         mv -f "$_home_dotfile" "$_backup_dotfile"
         ln -s "$_backup_dotfile" "$_home_dotfile"
-        printf "\n%sSuccess:%s %s replaced with %s and symlink created.\n" "$_color_success" "$_color_reset" "${_color_output}${_backup_dotfile}${_color_reset}" "${_color_output}${_home_dotfile}${_color_reset}"
+        printf "\n"
+        success "$(highlight "$_backup_dotfile") replaced with $(highlight "$_home_dotfile") and symlink created."
         break
         ;;
       3)
         rm "$_home_dotfile"
         ln -s "$_backup_dotfile" "$_home_dotfile"
-        printf "\n%sSuccess:%s %s replaced with a symlink.\n" "$_color_success" "$_color_reset" "${_color_output}${_home_dotfile}${_color_reset}"
+        printf "\n"
+        success "$(highlight "$_home_dotfile") replaced with a symlink."
         break
         ;;
       4)
-        printf "\n%sSkipped:%s %s\n" "$_color_warning" "$_color_reset" "$_home_dotfile"
+        skipped "$_home_dotfile"
         break
         ;;
-      *) printf "\n%sError:%s choose between %s[1]%s, %s[2]%s, %s[3]%s or %s[4]%s.\n" "$_color_error" "$_color_reset" "$_color_choice" "$_color_reset" "$_color_choice" "$_color_reset" "$_color_choice" "$_color_reset" "$_color_choice" "$_color_reset" ;;
+      *)
+        printf "\n"
+        error "Choose between $(option "1"), $(option "2"), $(option "3") or $(option "4")."
+        ;;
       esac
     done
   fi
@@ -1045,12 +1101,12 @@ create_backup_dotfile() {
     mv "$_dotfile" "$_backup_dotfile"
     is_verbose && printf "Symlinking %s to %s...\n" "$_backup_dotfile" "$_dotfile"
     ln -s "$_backup_dotfile" "$_dotfile"
-    printf "%sSuccess:%s %s moved and symlink created.\n" "$_color_success" "$_color_reset" "$_dotfile"
+    success "$(highlight "$_dotfile") moved and symlink created."
   else
     is_verbose && printf "Copying %s to %s...\n" "$_dotfile" "$_backup_dotfile"
     cp "$_dotfile" "$_backup_dotfile"
-    printf "%sSuccess:%s %s copied.\n" "$_color_success" "$_color_reset" "$_dotfile"
-    printf "%sWarning:%s Symlink not created. %s is not in $HOME! \n" "$_color_warning" "$_color_reset" "$_dotfile"
+    success "$(highlight "$_dotfile") copied."
+    warning "Symlink not created. $(highlight "$_dotfile") is not in $HOME!"
   fi
 }
 
@@ -1071,7 +1127,7 @@ add_dotfiles() {
 
   for _dotfile in "${_dotfiles[@]}"; do
     get_absolute_path _dotfile
-    [ ! -e "$_dotfile" ] && printf "%sError:%s %s is not a file.\n" "$_color_error" "$_color_reset" "$_dotfile" && exit 2
+    [ ! -e "$_dotfile" ] && error "$(highlight "$_dotfile") is not a file." && exit 2
 
     case $_dotfile in
     "$XDG_BIN_HOME"*)
@@ -1165,10 +1221,10 @@ handle_target_update() {
   if [ "$_symlink_target" = "$_file" ]; then
     if is_verbose; then
       printf "A symlink with the same target already exists.\n"
-      printf "%sSkipped:%s %s\n" "$_color_warning" "$_color_reset" "$_file"
+      skipped "$_file"
     fi
   elif [ $_ignore_symlink_different_target = "true" ]; then
-    printf "\n%sSkipped:%s %s (different target)\n" "$_color_warning" "$_color_reset" "$_file"
+    skipped "$_file (different target)"
   else
     if [ -h "$_file" ]; then
       _extra_info=" (also a symlink)"
@@ -1176,16 +1232,17 @@ handle_target_update() {
       [ -z "$_file_target" ] && _file_target="Target does not exist."
     fi
 
-    printf "\n%sWarning:%s A symlink exists but its target does not match your dotfile backup:\n" "$_color_warning" "$_color_reset"
-    printf "* Symlink: %s\n" "${_color_output}${_symlink}${_color_reset}"
-    printf "* Symlink target: %s\n" "${_color_output}${_symlink_target}${_color_reset}"
-    printf "* Backup file%s: %s\n" "$_extra_info" "${_color_output}${_file}${_color_reset}"
-    [ -h "$_file" ] && printf "* Backup target: %s\n" "${_color_output}${_file_target}${_color_reset}"
+    printf "\n"
+    warning "A symlink exists but its target does not match your dotfile backup:"
+    printf "* Symlink: %s\n" "$(highlight "$_symlink")"
+    printf "* Symlink target: %s\n" "$(highlight "$_symlink_target")"
+    printf "* Backup file%s: %s\n" "$_extra_info" "$(highlight "$_file")"
+    [ -h "$_file" ] && printf "* Backup target: %s\n" "$(highlight "$_file_target")"
 
     while true; do
       printf "How do you want to proceed?\n"
-      printf "%s[1]%s Update the symlink\n" "$_color_choice" "$_color_reset"
-      printf "%s[2]%s Skip this file\n" "$_color_choice" "$_color_reset"
+      printf "[%s] Update the symlink\n" "$(option "1")"
+      printf "[%s] Skip this file\n" "$(option "2")"
       printf "Your choice: "
       read -r _choice
 
@@ -1193,14 +1250,18 @@ handle_target_update() {
       1)
         is_verbose && printf "Updating symlink target...\n"
         ln -s -f "$_file" "$_symlink"
-        printf "%sSuccess:%s %s updated.\n" "$_color_success" "$_color_reset" "$_symlink"
+        success "$(highlight "$_symlink") updated."
         break
         ;;
       2)
-        printf "\n%sSkipped:%s %s\n" "$_color_warning" "$_color_reset" "$_file"
+        printf "\n"
+        skipped "$_file"
         break
         ;;
-      *) printf "\n%sError:%s Enter %s[1]%s or %s[2]%s.\n" "$_color_error" "$_color_reset" "$_color_choice" "$_color_reset" "$_color_choice" "$_color_reset" ;;
+      *)
+        printf "\n"
+        error "Enter $(option "1") or $(option "2")."
+        ;;
       esac
     done
   fi
@@ -1223,10 +1284,10 @@ remove_broken_symlinks() {
   if [ -s "$_tmp" ]; then
     while IFS= read -r file <&3; do
       rm "$file"
-      is_verbose && printf "%sSuccess:%s %s removed...\n" "$_color_success" "$_color_reset" "$file"
+      is_verbose && success "$(highlight "$file") removed..."
     done 3<"$_tmp"
 
-    printf "%sSuccess:%s All broken symlinks removed...\n" "$_color_success" "$_color_reset"
+    success "All broken symlinks removed..."
   else
     printf "No broken symlinks found.\n"
   fi
@@ -1252,10 +1313,10 @@ update_backup_symlink() {
       is_verbose && printf "Creating symlink from %s to %s\n" "$_backup_dotfile" "$_dotfile"
       mkdir -p "$(dirname "$_dotfile")"
       ln -s "$_backup_dotfile" "$_dotfile"
-      is_verbose && printf "%sSuccess:%s Symlink created for %s\n" "$_color_success" "$_color_reset" "$_backup_dotfile"
+      is_verbose && success "Symlink created for $(highlight "$_backup_dotfile")."
     fi
   else
-    printf "%sWarning:%s %s is not in %s. Symlink skipped.\n" "$_color_warning" "$_color_reset" "$_dotfile" "$HOME"
+    warning "$(highlight "$_dotfile") is not in $HOME. Symlink skipped."
   fi
 }
 
@@ -1312,7 +1373,8 @@ update_symlinks() {
 
   rm "$_tmp"
 
-  printf "\n%sSuccess:%s Done. Symlinks have been updated except those that have possibly been manually skipped or needing administrator rights.\n" "$_color_success" "$_color_reset"
+  printf "\n"
+  success "Done. Symlinks have been updated except those that have possibly been manually skipped or needing administrator rights."
 
   remove_broken_symlinks
   return_menu
@@ -1329,7 +1391,7 @@ replace_symlink_with_file() {
 
   cp --remove-destination "$_backup_file" "$_symlink"
   if is_verbose; then
-    printf "%sSuccess:%s %s replaced with %s\n" "$_color_success" "$_color_reset" "$_symlink" "$_backup_file"
+    success "$(highlight "$_symlink") replaced with $(highlight "$_backup_file")"
   fi
 }
 
@@ -1345,14 +1407,15 @@ handle_target_issue() {
   local _target=$2
   local _backup_file=$3
 
-  printf "\n%sWarning:%s The symlink target does not match with your backup file:\n" "$_color_warning" "$_color_reset"
-  printf "* Symlink: %s\n" "${_color_output}${_symlink}${_color_reset}"
-  printf "* Symlink target: %s\n" "${_color_output}${_target}${_color_reset}"
-  printf "* Backup file: %s\n" "${_color_output}${_backup_file}${_color_reset}"
+  printf "\n"
+  warning "The symlink target does not match with your backup file:"
+  printf "* Symlink: %s\n" "$(highlight "$_symlink")"
+  printf "* Symlink target: %s\n" "$(highlight "$_target")"
+  printf "* Backup file: %s\n" "$(highlight "$_backup_file")"
 
   printf "How do you want to proceed?\n"
-  printf "%s[1]%s Replace symlink with backup file\n" "$_color_choice" "$_color_reset"
-  printf "%s[2]%s Skip this symlink\n" "$_color_choice" "$_color_reset"
+  printf "[%s] Replace symlink with backup file\n" "$(option "1")"
+  printf "[%s] Skip this symlink\n" "$(option "2")"
 
   while true; do
     printf "Your choice: "
@@ -1363,10 +1426,13 @@ handle_target_issue() {
       break
       ;;
     2)
-      is_verbose && printf "\n%sSkipped:%s %s\n" "$_color_warning" "$_color_reset" "$_symlink"
+      is_verbose && printf "\n" && skipped "$_symlink"
       break
       ;;
-    *) printf "%sError:%s Enter %s[1]%s or %s[2]%s." "$_color_error" "$_color_reset" "$_color_choice" "$_color_reset" "$_color_choice" "$_color_reset" ;;
+    *)
+      printf "\n"
+      error "Enter $(option "1") or $(option "2")."
+      ;;
     esac
   done
 }
@@ -1434,7 +1500,8 @@ remove_symlinks() {
 
   rm "$_tmp"
 
-  printf "\n%sSuccess:%s Done. Symlinks have been replaced except those that have possibly been manually skipped.\n" "$_color_success" "$_color_reset"
+  printf "\n"
+  success "Done. Symlinks have been replaced except those that have possibly been manually skipped."
 
   return_menu
 }
@@ -1480,7 +1547,7 @@ commit_changes() {
         invalid_usage "commit"
       fi
     fi
-    printf "%sSuccess:%s Changes committed!\n" "$_color_success" "$_color_reset"
+    success "Changes committed!"
   else
     printf "\nCommit is not necessary, no staged files.\n"
   fi
@@ -1495,7 +1562,8 @@ push_changes() {
 
   if [ "$_unpushed_commits_count" -ne 0 ]; then
     git -C "$DOTIG_PATH" push
-    printf "\n%sSuccess:%s Commit(s) pushed!\n" "$_color_success" "$_color_reset"
+    printf "\n"
+    success "Commit(s) pushed!"
   else
     printf "\nNothing to push.\n"
   fi
@@ -1518,9 +1586,11 @@ pull_changes() {
   if ! is_repo_up_to_date "$_local_commit" "$_remote_commit" && is_pull_needed "$_local_commit" "$_common_ancestor"; then
     if ! is_repo_dirty; then
       git -C "$DOTIG_PATH" pull --rebase
-      printf "\n%sSuccess:%s Repo is now up-to-date!\n" "$_color_success" "$_color_reset"
+      printf "\n"
+      success "Repo is now up-to-date!"
     else
-      printf "\n%sWarning:%s Dotig cannot pull. Your repo is dirty.\n" "$_color_warning" "$_color_reset"
+      printf "\n"
+      warning "Dotig cannot pull. Your repo is dirty."
       printf "See the details below.\n"
       print_dirty_summary
       printf "Commit or stash (manually) your changes if you want to pull.\n"
@@ -1538,7 +1608,8 @@ update_all_submodules() {
   if has_submodules; then
     is_verbose && printf "Updating Git submodules..."
     update_submodules
-    printf "\n%sSuccess:%s All submodules have been updated.\n" "$_color_success" "$_color_reset"
+    printf "\n"
+    success "All submodules have been updated."
   else
     printf "No submodules found.\n"
   fi
@@ -1841,14 +1912,15 @@ return_menu() {
   local _choice
 
   while true; do
-    printf "\nWhat do you want to do: return to the menu %s[r]%s or exit %s[q]%s? " "$_color_choice" "$_color_reset" "$_color_choice" "$_color_reset"
+    printf "\nWhat do you want to do: return to the menu [%s] or exit [%s]? " "$(option "r")" "$(option "e")"
     read -r _choice
 
     case $_choice in
     [rR]) return ;;
     [qQ]) exit ;;
     *)
-      printf "%sError:%s invalid choice. Please enter %s[r]%seturn or %s[e]%sxit.\n" "$_color_error" "$_color_reset" "$_color_choice" "$_color_reset" "$_color_choice" "$_color_reset"
+      printf "\n"
+      error "Invalid choice. Please enter $(option "r") (return) or $(option "e") (exit)."
       ;;
     esac
   done
@@ -1857,18 +1929,18 @@ return_menu() {
 # Display the list of choices available in the main menu of Dotig.
 print_menu_options() {
   printf "\nChoose an action to perform:\n"
-  printf "%s[1]%s Add dotfile(s) to your repo\n" "$_color_choice" "$_color_reset"
-  printf "%s[2]%s Update symlinks\n" "$_color_choice" "$_color_reset"
-  printf "%s[3]%s Commit dotfiles changes\n" "$_color_choice" "$_color_reset"
-  printf "%s[4]%s Push changes to remote\n" "$_color_choice" "$_color_reset"
-  printf "%s[5]%s Pull changes from remote\n" "$_color_choice" "$_color_reset"
-  printf "%s[6]%s Update all Git submodules\n" "$_color_choice" "$_color_reset"
-  printf "%s[7]%s Remove all symlinks\n" "$_color_choice" "$_color_reset"
-  printf "%s[8]%s Print the dirty files list\n" "$_color_choice" "$_color_reset"
-  printf "%s[9]%s Check for Dotig update\n" "$_color_choice" "$_color_reset"
-  printf "%s[10]%s Print Dotig version\n" "$_color_choice" "$_color_reset"
-  printf "%s[11]%s Print Dotig help\n" "$_color_choice" "$_color_reset"
-  printf "%s[q]%s Exit\n" "$_color_choice" "$_color_reset"
+  printf "[%s] Add dotfile(s) to your repo\n" "$(option "1")"
+  printf "[%s] Update symlinks\n" "$(option "2")"
+  printf "[%s] Commit dotfiles changes\n" "$(option "3")"
+  printf "[%s] Push changes to remote\n" "$(option "4")"
+  printf "[%s] Pull changes from remote\n" "$(option "5")"
+  printf "[%s] Update all Git submodules\n" "$(option "6")"
+  printf "[%s] Remove all symlinks\n" "$(option "7")"
+  printf "[%s] Print the dirty files list\n" "$(option "8")"
+  printf "[%s] Check for Dotig update\n" "$(option "9")"
+  printf "[%s] Print Dotig version\n" "$(option "10")"
+  printf "[%s] Print Dotig help\n" "$(option "11")"
+  printf "[%s] Exit\n" "$(option "q")"
 }
 
 # Display the main menu of Dotig.
@@ -1893,7 +1965,7 @@ print_menu() {
     10) print_dotig_version ;;
     11) print_dotig_help ;;
     [qQ]) exit ;;
-    *) printf "\n%sError:%s Invalid choice. Try again.\n" "$_color_error" "$_color_reset" ;;
+    *) error "Invalid choice. Try again." ;;
     esac
   done
 }
