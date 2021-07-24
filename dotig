@@ -152,6 +152,12 @@ is_verbose() {
   [ "$_verbose" = "true" ]
 }
 
+verbose() {
+  if is_verbose; then
+    printf "%s\n" "$1"
+  fi
+}
+
 # Check if the first argument provided is an available command.
 # Argument 1: the command to test.
 is_dotig_cli_command() {
@@ -349,12 +355,10 @@ set_xdg_paths() {
 
 # Clean up temporary files then exit.
 cleanup() {
-  is_verbose && printf "\n\nDeleting temporary files...\n"
+  verbose $'\n\nDeleting temporary files...'
   rm -f "$_tmp"
-  if is_verbose; then
-    success "Temporary files deleted."
-    printf "Exit.\n"
-  fi
+  verbose "$(success "Temporary files deleted.")"
+  verbose "Exit."
   exit
 }
 
@@ -615,12 +619,10 @@ is_existing_remote() {
 
 # Check for supported OS.
 check_os() {
-  is_verbose && printf "Identifying the operating system...\n"
+  verbose "Identifying the operating system..."
 
   if is_linux; then
-    if is_verbose; then
-      success "Operating system identified. Linux is supported."
-    fi
+    verbose "$(success "Operating system identified. Linux is supported.")"
   else
     error "Linux is the only supported operating system."
     printf "Exit.\n"
@@ -630,11 +632,9 @@ check_os() {
 
 # Check if Git is installed.
 is_git_installed() {
-  is_verbose && printf "Checking if Git is installed...\n"
+  verbose "Checking if Git is installed..."
   if is_command_installed "git"; then
-    if is_verbose; then
-      success "Git is installed."
-    fi
+    verbose "$(success "Git is installed.")"
   else
     error "Dotig needs Git to function properly."
     printf "Please install it before using this program.\n"
@@ -645,11 +645,9 @@ is_git_installed() {
 
 # Check if curl is installed.
 is_curl_installed() {
-  is_verbose && printf "Checking if curl is installed...\n"
+  verbose "Checking if curl is installed..."
   if is_command_installed "curl"; then
-    if is_verbose; then
-      success "curl is installed."
-    fi
+    verbose "$(success "curl is installed.")"
   else
     warning "curl is needed to check for Dotig update. Please install it if you want to use this feature."
   fi
@@ -657,23 +655,19 @@ is_curl_installed() {
 
 # Check if the required commands are available.
 check_commands() {
-  is_verbose && printf "Checking installed programs...\n"
+  verbose "Checking installed programs..."
   is_git_installed
   is_curl_installed
-  if is_verbose; then
-    success "Programs checked."
-  fi
+  verbose "$(success "Programs checked.")"
 }
 
 # Check if all the requirements are met.
 check_requirements() {
-  is_verbose && printf "Checking requirements...\n"
+  verbose "Checking requirements..."
   check_os
   check_commands
-  if is_verbose; then
-    success "Requirements checked!"
-    printf "Let's continue.\n\n"
-  fi
+  verbose "$(success "Requirements checked!")"
+  verbose $'Let\'s continue.\n'
 }
 
 ###############################################################################
@@ -688,8 +682,8 @@ check_backup_path() {
   local _backup_path
   local _dotfiles_path
 
-  is_verbose && printf "For conveniance, Dotig uses a \$DOTFILES variable to determine the dotfiles backup path and a \$DOTFILES_PRIVATE variable to determine your private dotfiles.\n"
-  is_verbose && printf "If they are not set, you may want to declare them for future use.\n\n"
+  verbose "For conveniance, Dotig uses a \$DOTFILES variable to determine the dotfiles backup path and a \$DOTFILES_PRIVATE variable to determine your private dotfiles."
+  verbose $'If they are not set, you may want to declare them for future use.\n'
   printf "Checking if your dotfiles repository is set in your shell...\n"
 
   if [ "$_private_dotfiles" = "true" ]; then
@@ -707,7 +701,7 @@ check_backup_path() {
     set_path _backup_path
     is_correct_path _backup_path
   else
-    is_verbose && success "Dotfiles repository found."
+    verbose "$(success "Dotfiles repository found.")"
     _backup_path=$_dotfiles_path
     is_correct_path _backup_path
   fi
@@ -763,9 +757,7 @@ set_upstream_branch() {
   git -C "$DOTIG_PATH" fetch "$_remote_name"
   git -C "$DOTIG_PATH" checkout -t "$_remote_name"/"$_remote_branch"
 
-  if is_verbose; then
-    success "Upstream set."
-  fi
+  verbose "$(success "Upstream set.")"
 }
 
 # Check if the upstream branch is set, if not define it.
@@ -808,19 +800,13 @@ set_remote() {
 
   git -C "$DOTIG_PATH" remote add origin "$_remote"
 
-  if is_verbose; then
-    success "Remote set."
-  fi
+  verbose "$(success "Remote set.")"
 }
 
 # Check if the remote repository is set, if not define it.
 check_remote() {
   if ! is_remote_set; then
-    if is_verbose; then
-      printf "\n"
-      warning "Dotig is a Git repository but the remote is not set."
-      printf "\n"
-    fi
+    verbose $'\n$(warning "Dotig is a Git repository but the remote is not set.")\n'
     set_remote
   fi
 }
@@ -828,15 +814,9 @@ check_remote() {
 # Initialize the Git submodules.
 init_submodules() {
   if has_submodules; then
-    if is_verbose; then
-      printf "Init submodules...\n"
-    fi
-
+    verbose "Init submodules..."
     update_submodules
-
-    if is_verbose; then
-      success "All submodules have been initialized and updated."
-    fi
+    verbose "$(success "All submodules have been initialized and updated.")"
   fi
 }
 
@@ -877,7 +857,7 @@ set_git_repo() {
 check_git_configuration() {
   local _choice
 
-  is_verbose && printf "\nChecking if Git is configured...\n"
+  verbose $'\nChecking if Git is configured...'
 
   if ! is_git_repo; then
     set_git_repo
@@ -1007,17 +987,17 @@ create_backup_dotfile() {
   local _dotfile=$1
   local _backup_dotfile=$2
 
-  is_verbose && printf "Creating path if not already present...\n"
+  verbose "Creating path if not already present..."
   mkdir -p "$(dirname "$_backup_dotfile")"
 
   if is_file_in "$_dotfile" "$HOME"; then
-    is_verbose && printf "Moving %s to %s...\n" "$_dotfile" "$_backup_dotfile"
+    verbose "Moving $_dotfile to $_backup_dotfile..."
     mv "$_dotfile" "$_backup_dotfile"
-    is_verbose && printf "Symlinking %s to %s...\n" "$_backup_dotfile" "$_dotfile"
+    verbose "Symlinking $_backup_dotfile to $_dotfile..."
     ln -s "$_backup_dotfile" "$_dotfile"
     success "$(highlight "$_dotfile") moved and symlink created."
   else
-    is_verbose && printf "Copying %s to %s...\n" "$_dotfile" "$_backup_dotfile"
+    verbose "Copying $_dotfile to $_backup_dotfile..."
     cp "$_dotfile" "$_backup_dotfile"
     success "$(highlight "$_dotfile") copied."
     warning "Symlink not created. $(highlight "$_dotfile") is not in $HOME!"
@@ -1133,10 +1113,8 @@ handle_target_update() {
   [ -z "$_symlink_target" ] && _symlink_target="Target does not exist."
 
   if [ "$_symlink_target" = "$_file" ]; then
-    if is_verbose; then
-      printf "A symlink with the same target already exists.\n"
-      skipped "$_file"
-    fi
+    verbose "A symlink with the same target already exists."
+    verbose "$(skipped "$_file")"
   elif [ $_ignore_symlink_different_target = "true" ]; then
     skipped "$_file (different target)"
   else
@@ -1162,7 +1140,7 @@ handle_target_update() {
 
       case $_choice in
       1)
-        is_verbose && printf "Updating symlink target...\n"
+        verbose "Updating symlink target..."
         ln -s -f "$_file" "$_symlink"
         success "$(highlight "$_symlink") updated."
         break
@@ -1198,7 +1176,7 @@ remove_broken_symlinks() {
   if [ -s "$_tmp" ]; then
     while IFS= read -r file <&3; do
       rm "$file"
-      is_verbose && success "$(highlight "$file") removed..."
+      verbose "$(success "$(highlight "$file") removed...")"
     done 3<"$_tmp"
 
     success "All broken symlinks removed..."
@@ -1224,10 +1202,10 @@ update_backup_symlink() {
     elif [ -f "$_dotfile" ]; then
       handle_duplicate "$_dotfile" "$_backup_dotfile"
     else
-      is_verbose && printf "Creating symlink from %s to %s\n" "$_backup_dotfile" "$_dotfile"
+      verbose "Creating symlink from $_backup_dotfile to $_dotfile"
       mkdir -p "$(dirname "$_dotfile")"
       ln -s "$_backup_dotfile" "$_dotfile"
-      is_verbose && success "Symlink created for $(highlight "$_backup_dotfile")."
+      verbose "Symlink created for $(highlight "$_backup_dotfile")."
     fi
   else
     warning "$(highlight "$_dotfile") is not in $HOME. Symlink skipped."
@@ -1304,9 +1282,7 @@ replace_symlink_with_file() {
   local _backup_file=$2
 
   cp --remove-destination "$_backup_file" "$_symlink"
-  if is_verbose; then
-    success "$(highlight "$_symlink") replaced with $(highlight "$_backup_file")"
-  fi
+  verbose "$(success "$(highlight "$_symlink") replaced with $(highlight "$_backup_file")")"
 }
 
 # Execute the action specified by the user if the symlink target does not match
@@ -1340,7 +1316,7 @@ handle_target_issue() {
       break
       ;;
     2)
-      is_verbose && printf "\n" && skipped "$_symlink"
+      verbose $'\n$(skipped "$_symlink")'
       break
       ;;
     *)
@@ -1518,9 +1494,9 @@ pull_changes() {
 
 # Update all Git submodules.
 update_all_submodules() {
-  is_verbose && printf "\nChecking for Git submodules...\n"
+  verbose $'\nChecking for Git submodules...'
   if has_submodules; then
-    is_verbose && printf "Updating Git submodules..."
+    verbose "Updating Git submodules..."
     update_submodules
     printf "\n"
     success "All submodules have been updated."
