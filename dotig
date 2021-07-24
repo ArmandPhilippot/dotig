@@ -137,14 +137,9 @@ is_linux() {
   [ "$OSTYPE" = "linux-gnu" ]
 }
 
-# Check if Git is installed.
-is_git_installed() {
-  [ -x "$(command -v git)" ]
-}
-
-# Check if curl is installed.
-is_curl_installed() {
-  [ -x "$(command -v curl)" ]
+# Check if the provided command is installed.
+is_command_installed() {
+  [ -x "$(command -v "$1")" ]
 }
 
 ###############################################################################
@@ -615,17 +610,16 @@ is_existing_remote() {
 
 ###############################################################################
 # 3. Safety Checks
-# Do not execute Dotig if operating system is not supported or if Git is not
-# installed.
+# Do not execute Dotig if requirements are not met.
 ###############################################################################
 
-# Check for supported OS/distribution.
+# Check for supported OS.
 check_os() {
   is_verbose && printf "Identifying the operating system...\n"
 
   if is_linux; then
     if is_verbose; then
-      success "Linux is supported."
+      success "Operating system identified. Linux is supported."
     fi
   else
     error "Linux is the only supported operating system."
@@ -634,11 +628,10 @@ check_os() {
   fi
 }
 
-# Check if the commands required by the script are available.
-check_commands() {
-  is_verbose && printf "Checking installed programs...\n"
-
-  if is_git_installed; then
+# Check if Git is installed.
+is_git_installed() {
+  is_verbose && printf "Checking if Git is installed...\n"
+  if is_command_installed "git"; then
     if is_verbose; then
       success "Git is installed."
     fi
@@ -648,8 +641,12 @@ check_commands() {
     printf "Exit.\n"
     exit 1
   fi
+}
 
-  if is_curl_installed; then
+# Check if curl is installed.
+is_curl_installed() {
+  is_verbose && printf "Checking if curl is installed...\n"
+  if is_command_installed "curl"; then
     if is_verbose; then
       success "curl is installed."
     fi
@@ -658,7 +655,17 @@ check_commands() {
   fi
 }
 
-# Check if all the requirements are filled.
+# Check if the required commands are available.
+check_commands() {
+  is_verbose && printf "Checking installed programs...\n"
+  is_git_installed
+  is_curl_installed
+  if is_verbose; then
+    success "Programs checked."
+  fi
+}
+
+# Check if all the requirements are met.
 check_requirements() {
   is_verbose && printf "Checking requirements...\n"
   check_os
