@@ -60,8 +60,8 @@ set -e
 #   5.4. Feature: Dotig Info
 # 6. Help Menus
 # 7. Main Menu
-# 8. Entry Point
-# 9. CLI
+# 8. CLI
+# 9. Entry Point
 # 10. Execute Dotig
 ###############################################################################
 
@@ -2021,12 +2021,8 @@ return_menu() {
   done
 }
 
-###############################################################################
-# 8. Entry Point
-# Main entry point of Dotig.
-###############################################################################
-
-main() {
+# Execute all necessary check/config before printing the menu.
+launch_dotig_menu() {
   print_logo
   check_requirements
   is_backup_repo_ready
@@ -2036,7 +2032,7 @@ main() {
 }
 
 ###############################################################################
-# 9. CLI
+# 8. CLI
 # Handle the command line interface scenario.
 ###############################################################################
 
@@ -2350,14 +2346,19 @@ set_dotig_options() {
       esac
     done
 
-    main
+    launch_dotig_menu
   fi
 }
 
-# Handle Dotig CLI.
-# Require 1 or more arguments.
-dotig_cli() {
-  if is_dotig_cli_command "$1"; then
+###############################################################################
+# 9. Entry Point
+# Main entry point of Dotig.
+###############################################################################
+
+main() {
+  if [ $# -eq 0 ]; then
+    launch_dotig_menu
+  elif is_dotig_cli_command "$1"; then
     handle_dotig_cli_commands "$@"
   else
     set_dotig_options "$@"
@@ -2368,8 +2369,4 @@ dotig_cli() {
 # 10. Execute Dotig
 ###############################################################################
 
-if [ $# -eq 0 ]; then
-  main
-else
-  dotig_cli "$@"
-fi
+main "$@"
