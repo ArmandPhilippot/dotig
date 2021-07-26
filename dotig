@@ -393,7 +393,8 @@ get_upstream_name() {
 
 # Get the remote branch name of the current repository.
 get_remote_branch() {
-  git -C "$DOTIG_REPO" ls-remote --symref origin HEAD | head -1 | sed 's@ref: refs/heads/@@' | cut -f1
+  [ $# -ne 1 ] && error_unexpected
+  git -C "$DOTIG_REPO" ls-remote --symref "$1" HEAD | head -1 | sed 's@ref: refs/heads/@@' | cut -f1
 }
 
 # Return a list of existing Git remotes.
@@ -731,7 +732,7 @@ set_upstream_branch() {
     _remote_name=$_git_remotes
   fi
 
-  _remote_branch=$(get_remote_branch)
+  _remote_branch=$(get_remote_branch "$_remote_name")
 
   git -C "$DOTIG_REPO" fetch "$_remote_name"
   git -C "$DOTIG_REPO" checkout -t "$_remote_name"/"$_remote_branch"
