@@ -86,7 +86,7 @@ DOTIG_LOGO=$(
 #######################################
 EOF
 )
-DOTIG_PATH=""
+DOTIG_REPO=""
 DOTIG_VERSION="1.2.2"
 
 ###############################################################################
@@ -223,68 +223,84 @@ status() {
 ###############################################################################
 
 # Return the absolute path.
-# Argument 1: a path to convert. Also used to store the absolute path.
+# Argument 1: a path to convert.
 get_absolute_path() {
   [ $# -ne 1 ] && error_unexpected
 
-  local -n _file=$1
+  local path=$1
   local _absolute_path
 
-  case $_file in
-  /*) _absolute_path=$_file ;;
-  \~/*) _absolute_path="$HOME/${_file:2}" ;;
-  ./*) _absolute_path="$(pwd)/${_file:2}" ;;
-  *) _absolute_path="$(pwd)/$_file" ;;
+  case $path in
+  /*) _absolute_path=$path ;;
+  \~/*) _absolute_path="$HOME/${path:2}" ;;
+  ./*) _absolute_path="$(pwd)/${path:2}" ;;
+  *) _absolute_path="$(pwd)/$path" ;;
   esac
 
-  eval "$1=$_absolute_path"
+  printf "%s\n" "$_absolute_path"
 }
 
-# Prompt user to define an existing directory path.
-# Return the entered path.
-set_path() {
-  local _path
-  printf "Set the path: " >&2
-  read -r -e _path
-  get_absolute_path _path
-
-  while [ ! -d "$_path" ]; do
-    error "$(highlight "$_path") is not a directory."
-    printf "Please enter a valid path: "
-    read -r -e _path
-    get_absolute_path _path
-  done
+# Add a trailing slash to the path if it is missing.
+# Argument 1: a directory path
+# Return the normalized path.
+normalize_path() {
+  local _path=$1
 
   case $_path in
   */) : ;;
   *) _path="${_path}/" ;;
   esac
 
-  eval "$1=$_path"
+  printf "%s\n" "$_path"
 }
 
-# Ask user if the provided path is correct, if not define new path.
-# Argument 1: the path to test. Also used to store the path.
-# Return the path (the new one or preserve the previous one).
+# Check if the provided path is an existent directory.
+# Argument 1: the path to test
+is_valid_directory() {
+  local _dir=$1
+
+  if [ ! "$_dir" ] || [ ! -d "$_dir" ]; then
+    return 1
+  fi
+
+  return 0
+}
+
+# Ask user if the provided path is correct.
+# Argument 1: the path to test.
 is_correct_path() {
   [ $# -ne 1 ] && error_unexpected
 
+  local _path=$1
   local _validation
-  local -n _valid_path=$1
 
   while true; do
-    printf "Is %s correct? [$(option "y")/$(option "n")]" "$(highlight "$_valid_path")"
+    printf "Is %s correct? [$(option "y")/$(option "n")] " "$(highlight "$_path")"
     read -r _validation
+
     case $_validation in
-    [yY])
-      break
-      ;;
-    [nN])
-      set_path _valid_path
-      ;;
+    [yY]) return 0 ;;
+    [nN]) return 1 ;;
     *) error "Please enter $(option "y") (yes) or $(option "n") (no)." ;;
     esac
   done
+}
+
+# Prompt user to define an existing directory path.
+# Return the entered path.
+ask_path() {
+  local _path
+
+  while [ ! -d "$_path" ]; do
+    printf "Set the path: " >&2
+    read -r -e _path
+    _path=$(get_absolute_path "$_path")
+
+    [ ! -d "$_path" ] && error "$(highlight "$_path") is not a directory." >&2
+  done <&2
+
+  _path=$(normalize_path "$_path")
+  printf "%s\n" "$_path"
 }
 
 # Check if a file is in the provided path.
@@ -300,36 +316,6 @@ is_file_in() {
   "$_tested_path"*) return 0 ;;
   *) return 1 ;;
   esac
-}
-
-# Check if the provided path is an existent directory.
-# Argument 1: the path to test
-is_valid_backup_path() {
-  local _valid_backup_path=$1
-
-  [ ! "$_valid_backup_path" ] && error_backup_path
-  [ ! -d "$_valid_backup_path" ] && error_backup_path
-  return 0
-}
-
-# Add a trailing slash to the path if it is missing.
-normalize_dotig_path() {
-  case $DOTIG_PATH in
-  */) : ;;
-  *) DOTIG_PATH="${DOTIG_PATH}/" ;;
-  esac
-}
-
-# Set DOTIG_PATH with the correct format.
-# Argument 1: the path to use for DOTIG_PATH
-set_dotig_path() {
-  [ $# -ne 1 ] && error_unexpected
-
-  local _tmp_path=$1
-
-  get_absolute_path _tmp_path
-  is_valid_backup_path "$_tmp_path" && DOTIG_PATH=$_tmp_path
-  normalize_dotig_path
 }
 
 # Use XDG Spefication to handle dotfiles and symlinks.
@@ -385,21 +371,6 @@ invalid_usage() {
   exit 1
 }
 
-# Display an error if the dotfiles repository is not defined then exit.
-error_backup_path() {
-  local _env_var
-
-  if [ "$_private_dotfiles" = "true" ]; then
-    _env_var="\$DOTFILES_PRIVATE"
-  else
-    _env_var="\$DOTFILES"
-  fi
-
-  error "$(highlight "$_env_var") must be set to use Dotig command line interface."
-  printf "See CONFIGURATION in \`dotig --help\` or \`dotig -h\`.\n"
-  exit 1
-}
-
 # Execute cleanup function if these signals are caught.
 trap cleanup SIGHUP SIGINT SIGQUIT SIGTERM
 
@@ -410,34 +381,34 @@ trap cleanup SIGHUP SIGINT SIGQUIT SIGTERM
 
 # Return the branch name on which the working tree is on.
 get_current_branch() {
-  git -C "$DOTIG_PATH" symbolic-ref --quiet --short HEAD
+  git -C "$DOTIG_REPO" symbolic-ref --quiet --short HEAD
 }
 
 # Return the upstream name for the current branch.
 get_upstream_name() {
   local _git_branch
   _git_branch=$(get_current_branch)
-  git -C "$DOTIG_PATH" config branch."$_git_branch".remote 2>/dev/null
+  git -C "$DOTIG_REPO" config branch."$_git_branch".remote 2>/dev/null
 }
 
 # Get the remote branch name of the current repository.
 get_remote_branch() {
-  git -C "$DOTIG_PATH" ls-remote --symref origin HEAD | head -1 | sed 's@ref: refs/heads/@@' | cut -f1
+  git -C "$DOTIG_REPO" ls-remote --symref origin HEAD | head -1 | sed 's@ref: refs/heads/@@' | cut -f1
 }
 
 # Return a list of existing Git remotes.
 get_existing_remotes() {
-  git -C "$DOTIG_PATH" remote
+  git -C "$DOTIG_REPO" remote
 }
 
 # Download objects and refs from remote.
 fetch_remote() {
-  git -C "$DOTIG_PATH" fetch
+  git -C "$DOTIG_REPO" fetch
 }
 
 # Return the object name of the current commit on the working tree.
 get_local_commit() {
-  git -C "$DOTIG_PATH" rev-parse --verify -q HEAD
+  git -C "$DOTIG_REPO" rev-parse --verify -q HEAD
 }
 
 # Check if the local repo has at least one commit.
@@ -449,7 +420,7 @@ has_local_commit() {
 
 # Return the object name of the last commit on the remote.
 get_remote_commit() {
-  git -C "$DOTIG_PATH" rev-parse --verify -q FETCH_HEAD
+  git -C "$DOTIG_REPO" rev-parse --verify -q FETCH_HEAD
 }
 
 # Return a good common ancestor if the working tree has at least one commit.
@@ -457,7 +428,7 @@ get_common_ancestor() {
   local _local_commit=$1
   local _remote_commit=$2
 
-  [ "$_local_commit" ] && git -C "$DOTIG_PATH" merge-base HEAD "$_remote_commit"
+  [ "$_local_commit" ] && git -C "$DOTIG_REPO" merge-base HEAD "$_remote_commit"
 }
 
 # Check if the current commit and the last commit on the remote are the same.
@@ -486,7 +457,7 @@ is_push_needed() {
 
 # Return the number of changed files (modified, deleted...) on the working tree.
 get_dirty_files_count() {
-  git -C "$DOTIG_PATH" status --porcelain | wc -l
+  git -C "$DOTIG_REPO" status --porcelain | wc -l
 }
 
 # Check if the working tree has changed files.
@@ -499,37 +470,37 @@ is_repo_dirty() {
 
 # Return the number of untracked files.
 get_untracked_files_count() {
-  git -C "$DOTIG_PATH" status --porcelain | grep -c "^??"
+  git -C "$DOTIG_REPO" status --porcelain | grep -c "^??"
 }
 
 # Return the number of staged files.
 get_staged_files_count() {
-  git -C "$DOTIG_PATH" status --porcelain | grep -c "^[A|M]"
+  git -C "$DOTIG_REPO" status --porcelain | grep -c "^[A|M]"
 }
 
 # Return the number of deleted files.
 get_deleted_files_count() {
-  git -C "$DOTIG_PATH" status --porcelain | grep -c "^.D"
+  git -C "$DOTIG_REPO" status --porcelain | grep -c "^.D"
 }
 
 # Return the number of renamed files.
 get_renamed_files_count() {
-  git -C "$DOTIG_PATH" status --porcelain | grep -c "^R"
+  git -C "$DOTIG_REPO" status --porcelain | grep -c "^R"
 }
 
 # Return the number of modified files.
 get_modified_files_count() {
-  git -C "$DOTIG_PATH" status --porcelain | grep -c "^.M"
+  git -C "$DOTIG_REPO" status --porcelain | grep -c "^.M"
 }
 
 # Return the number of unmerged files.
 get_unmerged_files_count() {
-  git -C "$DOTIG_PATH" ls-files --unmerged | wc -l
+  git -C "$DOTIG_REPO" ls-files --unmerged | wc -l
 }
 
 # Return the number of stash.
 get_stashed_count() {
-  git -C "$DOTIG_PATH" stash list | wc -l
+  git -C "$DOTIG_REPO" stash list | wc -l
 }
 
 # Return the list of unpushed commits.
@@ -540,7 +511,7 @@ get_unpushed_commits() {
   _remote=$(get_upstream_name)
   _branch=$(get_current_branch)
 
-  has_local_commit && git -C "$DOTIG_PATH" log --oneline "$_remote"/"$_branch"..HEAD
+  has_local_commit && git -C "$DOTIG_REPO" log --oneline "$_remote"/"$_branch"..HEAD
 }
 
 # Check if the repo has Git submodules.
@@ -549,7 +520,7 @@ has_submodules() {
   local _submodules
 
   _tmp=$(mktemp "${TMPDIR:-/tmp}/dotig.XXXXXX")
-  git -C "$DOTIG_PATH" submodule status >"$_tmp"
+  git -C "$DOTIG_REPO" submodule status >"$_tmp"
 
   while IFS='' read -r line; do _submodules+=("$line"); done <"$_tmp"
 
@@ -560,23 +531,23 @@ has_submodules() {
 
 # Update all the Git submodules.
 update_submodules() {
-  git -C "$DOTIG_PATH" submodule update --init --recursive
+  git -C "$DOTIG_REPO" submodule update --init --recursive
 }
 
 # Return a list of Git submodule paths.
 get_submodules_path() {
   # shellcheck disable=SC2016
-  git -C "$DOTIG_PATH" submodule -q foreach 'printf ${sm_path}"\n"'
+  git -C "$DOTIG_REPO" submodule -q foreach 'printf ${sm_path}"\n"'
 }
 
 # Check if the dotfiles backup directory is a Git repository.
 is_git_repo() {
-  git -C "$DOTIG_PATH" rev-parse --git-dir >/dev/null 2>&1
+  git -C "$DOTIG_REPO" rev-parse --git-dir >/dev/null 2>&1
 }
 
 # Check if the remote is set.
 is_remote_set() {
-  git -C "$DOTIG_PATH" config --get-regexp '^remote\.' >/dev/null 2>&1
+  git -C "$DOTIG_REPO" config --get-regexp '^remote\.' >/dev/null 2>&1
 }
 
 # Check if the provided remote name exists.
@@ -672,41 +643,52 @@ check_requirements() {
 
 ###############################################################################
 # 4. Repo Configuration
-# Check if $DOTFILES is defined and if it is a repo. If not, set both.
+# Check the environment variable are defined and if it is a repo.
+# If not, set both.
 ###############################################################################
 
-# Check if $DOTFILES is set and contains the correct backup path, if not set it.
-# Require 1 argument to store the path.
-# Return the path to use.
-check_backup_path() {
-  local _backup_path
-  local _dotfiles_path
-
-  verbose "For conveniance, Dotig uses a \$DOTFILES variable to determine the dotfiles backup path and a \$DOTFILES_PRIVATE variable to determine your private dotfiles."
-  verbose $'If they are not set, you may want to declare them for future use.\n'
-  printf "Checking if your dotfiles repository is set in your shell...\n"
+# Return the environment variable name according to private paramater.
+get_requested_env_var() {
+  local _env_var
 
   if [ "$_private_dotfiles" = "true" ]; then
-    _dotfiles_path=$DOTFILES_PRIVATE
+    _env_var="\$DOTFILES_PRIVATE"
   else
-    _dotfiles_path=$DOTFILES
+    _env_var="\$DOTFILES"
   fi
 
-  if [ ! "$_dotfiles_path" ]; then
-    warning "You did not define your dotfiles repository in your shell configuration files."
-    set_path _backup_path
-    is_correct_path _backup_path
-  elif [ ! -d "$_dotfiles_path" ]; then
-    warning "The path provided in your shell configuration files does not seem to match a directory."
-    set_path _backup_path
-    is_correct_path _backup_path
+  printf "%s\n" "$_env_var"
+}
+
+# Set DOTIG_REPO with the correct format.
+# Check if environment variables are set, if not ask user for a valid path.
+set_dotfiles_repo() {
+  verbose "Checking if your dotfiles repository is set in your shell..."
+
+  if [ "$_private_dotfiles" = "true" ]; then
+    DOTIG_REPO="$DOTFILES_PRIVATE"
   else
-    verbose "$(success "Dotfiles repository found.")"
-    _backup_path=$_dotfiles_path
-    is_correct_path _backup_path
+    DOTIG_REPO="$DOTFILES"
   fi
 
-  eval "$1=$_backup_path"
+  if [ -z "$DOTIG_REPO" ]; then
+    warning "You did not define $(get_requested_env_var) in your shell configuration."
+    verbose "For conveniance, Dotig uses \$DOTFILES and \$DOTFILES_PRIVATE variables to determine your dotfiles repos."
+    verbose $'If they are not set, you may want to declare them for future use.\n'
+    DOTIG_REPO=$(ask_path)
+  elif ! is_valid_directory "$DOTIG_REPO"; then
+    warning "It seems $(get_requested_env_var) does not contain a valid directory."
+    DOTIG_REPO=$(ask_path)
+  fi
+
+  while ! is_correct_path "$DOTIG_REPO"; do
+    DOTIG_REPO=$(ask_path)
+  done
+
+  DOTIG_REPO=$(get_absolute_path "$DOTIG_REPO")
+  DOTIG_REPO=$(normalize_path "$DOTIG_REPO")
+
+  verbose "$(success "Dotfiles directory set.")"
 }
 
 # Ask the remote name when multiple remotes exist.
@@ -754,8 +736,8 @@ set_upstream_branch() {
 
   _remote_branch=$(get_remote_branch)
 
-  git -C "$DOTIG_PATH" fetch "$_remote_name"
-  git -C "$DOTIG_PATH" checkout -t "$_remote_name"/"$_remote_branch"
+  git -C "$DOTIG_REPO" fetch "$_remote_name"
+  git -C "$DOTIG_REPO" checkout -t "$_remote_name"/"$_remote_branch"
 
   verbose "$(success "Upstream set.")"
 }
@@ -798,7 +780,7 @@ set_remote() {
     read -r _remote
   done
 
-  git -C "$DOTIG_PATH" remote add origin "$_remote"
+  git -C "$DOTIG_REPO" remote add origin "$_remote"
 
   verbose "$(success "Remote set.")"
 }
@@ -822,7 +804,7 @@ init_submodules() {
 
 # Initialize a new Git repository with remote, upstream and submodules.
 init_git() {
-  git -C "$DOTIG_PATH" init
+  git -C "$DOTIG_REPO" init
   set_remote
   set_upstream_branch
   init_submodules
@@ -867,13 +849,12 @@ check_git_configuration() {
   fi
 }
 
-# Check if the dotfiles path is set and if it is a Git repository, if not
-# configure it.
-is_backup_repo_ready() {
-  check_backup_path DOTIG_PATH
-  set_dotig_path "$DOTIG_PATH"
+# Initialize repo by checking path and Git configuration.
+init_dotfiles_repo() {
+  verbose "Checking if your dotfiles repo is ready..."
+  set_dotfiles_repo
   check_git_configuration
-  success "Your dotfiles repo is ready."
+  verbose "$(success "Your dotfiles repo is ready.")"
 }
 
 ###############################################################################
@@ -908,7 +889,7 @@ print_diff() {
     printf "\nBoth files are identical.\n"
   else
     printf "\nThe two files are different. See the diff of %s:\n\n" "$(highlight "$_filename")"
-    printf "%s%0.${_padding_lenght}s%s\n" "$HOME" "$_padding" "$DOTIG_PATH"
+    printf "%s%0.${_padding_lenght}s%s\n" "$HOME" "$_padding" "$DOTIG_REPO"
     printf "%s\n" "$_divider"
     command diff --color -y --width="$COLUMNS" -t --suppress-common-lines "$_home_dotfile" "$_backup_dotfile" || [ $? -eq 1 ]
   fi
@@ -1020,7 +1001,7 @@ add_dotfiles() {
   fi
 
   for _dotfile in "${_dotfiles[@]}"; do
-    get_absolute_path _dotfile
+    _dotfile=$(get_absolute_path "$_dotfile")
     [ ! -e "$_dotfile" ] && error "$(highlight "$_dotfile") is not a file." && exit 2
 
     case $_dotfile in
@@ -1058,7 +1039,7 @@ add_dotfiles() {
       ;;
     esac
 
-    _backup_dotfile="${DOTIG_PATH}${_partial_dest}${_dotfile#$_removed_part}"
+    _backup_dotfile="${DOTIG_REPO}${_partial_dest}${_dotfile#$_removed_part}"
 
     if [ -e "$_backup_dotfile" ]; then
       handle_duplicate "$_dotfile" "$_backup_dotfile"
@@ -1085,10 +1066,10 @@ get_backup_dotfiles() {
   rm "$_tmp"
   _exclude_dirs+=('.git')
 
-  _find_cmd=(find "$DOTIG_PATH" -mindepth 2 \( -type f -o -type l \))
+  _find_cmd=(find "$DOTIG_REPO" -mindepth 2 \( -type f -o -type l \))
 
   for _exclude_dir in "${_exclude_dirs[@]}"; do
-    _find_cmd+=(-not \( -path "$DOTIG_PATH${_exclude_dir}/*" -prune \))
+    _find_cmd+=(-not \( -path "$DOTIG_REPO${_exclude_dir}/*" -prune \))
   done
   _find_cmd+=(-print)
 
@@ -1161,7 +1142,7 @@ handle_target_update() {
 
 # Find all broken symlinks in $HOME whose target is in $DOTFILES.
 get_broken_symlinks() {
-  find "$HOME" -type l -not \( -path "$DOTIG_PATH/*" -prune \) -ilname "$DOTIG_PATH*" ! -exec test -e {} \; -print
+  find "$HOME" -type l -not \( -path "$DOTIG_REPO/*" -prune \) -ilname "$DOTIG_REPO*" ! -exec test -e {} \; -print
 }
 
 # Remove broken symlinks in $HOME whose target is in $DOTFILES.
@@ -1224,37 +1205,37 @@ update_symlinks() {
 
   while IFS= read -r _backup_dotfile <&3; do
     case $_backup_dotfile in
-    "${DOTIG_PATH}home/xdg_bin/"*)
+    "${DOTIG_REPO}home/xdg_bin/"*)
       _partial_dest="$XDG_BIN_HOME"
-      _removed_part="${DOTIG_PATH}home/xdg_bin"
+      _removed_part="${DOTIG_REPO}home/xdg_bin"
       ;;
-    "${DOTIG_PATH}home/xdg_cache/"*)
+    "${DOTIG_REPO}home/xdg_cache/"*)
       _partial_dest="$XDG_CACHE_HOME"
-      _removed_part="${DOTIG_PATH}home/xdg_cache"
+      _removed_part="${DOTIG_REPO}home/xdg_cache"
       ;;
-    "${DOTIG_PATH}home/xdg_config/"*)
+    "${DOTIG_REPO}home/xdg_config/"*)
       _partial_dest="$XDG_CONFIG_HOME"
-      _removed_part="${DOTIG_PATH}home/xdg_config"
+      _removed_part="${DOTIG_REPO}home/xdg_config"
       ;;
-    "${DOTIG_PATH}home/xdg_data/"*)
+    "${DOTIG_REPO}home/xdg_data/"*)
       _partial_dest="$XDG_DATA_HOME"
-      _removed_part="${DOTIG_PATH}home/xdg_data"
+      _removed_part="${DOTIG_REPO}home/xdg_data"
       ;;
-    "${DOTIG_PATH}home/xdg_lib/"*)
+    "${DOTIG_REPO}home/xdg_lib/"*)
       _partial_dest="$XDG_LIB_HOME"
-      _removed_part="${DOTIG_PATH}home/xdg_lib"
+      _removed_part="${DOTIG_REPO}home/xdg_lib"
       ;;
-    "${DOTIG_PATH}home/xdg_state/"*)
+    "${DOTIG_REPO}home/xdg_state/"*)
       _partial_dest="$XDG_STATE_HOME"
-      _removed_part="${DOTIG_PATH}home/xdg_state"
+      _removed_part="${DOTIG_REPO}home/xdg_state"
       ;;
-    "${DOTIG_PATH}home/"*)
+    "${DOTIG_REPO}home/"*)
       _partial_dest="$HOME"
-      _removed_part="${DOTIG_PATH}home"
+      _removed_part="${DOTIG_REPO}home"
       ;;
     *)
       _partial_dest=""
-      _removed_part="$DOTIG_PATH"
+      _removed_part="$DOTIG_REPO"
       ;;
     esac
 
@@ -1338,42 +1319,42 @@ remove_symlinks() {
   printf "\nReplacing symlinks with original files...\n"
 
   _tmp=$(mktemp "${TMPDIR:-/tmp}/dotig.XXXXXX")
-  find "$HOME" -type l -not \( -path "$DOTIG_PATH/*" -prune \) -ilname "$DOTIG_PATH*" -print >"$_tmp"
+  find "$HOME" -type l -not \( -path "$DOTIG_REPO/*" -prune \) -ilname "$DOTIG_REPO*" -print >"$_tmp"
 
   while IFS= read -r _symlink <&3; do
     _symlink_target=$(readlink "$_symlink") || true
 
     case $_symlink_target in
-    "${DOTIG_PATH}home/xdg_bin/"*)
-      _partial_dest="${DOTIG_PATH}home/xdg_bin"
+    "${DOTIG_REPO}home/xdg_bin/"*)
+      _partial_dest="${DOTIG_REPO}home/xdg_bin"
       _removed_part="$XDG_BIN_HOME"
       ;;
-    "${DOTIG_PATH}home/xdg_cache/"*)
-      _partial_dest="${DOTIG_PATH}home/xdg_cache"
+    "${DOTIG_REPO}home/xdg_cache/"*)
+      _partial_dest="${DOTIG_REPO}home/xdg_cache"
       _removed_part="$XDG_CACHE_HOME"
       ;;
-    "${DOTIG_PATH}home/xdg_config/"*)
-      _partial_dest="${DOTIG_PATH}home/xdg_config"
+    "${DOTIG_REPO}home/xdg_config/"*)
+      _partial_dest="${DOTIG_REPO}home/xdg_config"
       _removed_part="$XDG_CONFIG_HOME"
       ;;
-    "${DOTIG_PATH}home/xdg_data/"*)
-      _partial_dest="${DOTIG_PATH}home/xdg_data"
+    "${DOTIG_REPO}home/xdg_data/"*)
+      _partial_dest="${DOTIG_REPO}home/xdg_data"
       _removed_part="$XDG_DATA_HOME"
       ;;
-    "${DOTIG_PATH}home/xdg_lib/"*)
-      _partial_dest="${DOTIG_PATH}home/xdg_lib"
+    "${DOTIG_REPO}home/xdg_lib/"*)
+      _partial_dest="${DOTIG_REPO}home/xdg_lib"
       _removed_part="$XDG_LIB_HOME"
       ;;
-    "${DOTIG_PATH}home/xdg_state/"*)
-      _partial_dest="${DOTIG_PATH}home/xdg_state"
+    "${DOTIG_REPO}home/xdg_state/"*)
+      _partial_dest="${DOTIG_REPO}home/xdg_state"
       _removed_part="$XDG_STATE_HOME"
       ;;
-    "${DOTIG_PATH}home/"*)
-      _partial_dest="${DOTIG_PATH}home"
+    "${DOTIG_REPO}home/"*)
+      _partial_dest="${DOTIG_REPO}home"
       _removed_part="$HOME"
       ;;
     *)
-      _partial_dest="$DOTIG_PATH"
+      _partial_dest="$DOTIG_REPO"
       _removed_part=""
       ;;
     esac
@@ -1409,18 +1390,18 @@ commit_changes() {
 
   if [ "$_commit_files" = "untracked" ]; then
     if [ "$(get_untracked_files_count)" -gt 0 ]; then
-      git -C "$DOTIG_PATH" add "$(git -C "$DOTIG_PATH" ls-files -o --exclude-standard)"
+      git -C "$DOTIG_REPO" add "$(git -C "$DOTIG_REPO" ls-files -o --exclude-standard)"
     else
       printf "\nThere are no untracked files.\n"
     fi
   elif [ "$_commit_files" = "tracked" ]; then
     if [ "$(get_modified_files_count)" -gt 0 ] || [ "$(get_deleted_files_count)" -gt 0 ]; then
-      git -C "$DOTIG_PATH" add -u
+      git -C "$DOTIG_REPO" add -u
     else
       printf "\nThere are no modified or deleted files.\n"
     fi
   else
-    git -C "$DOTIG_PATH" add --all
+    git -C "$DOTIG_REPO" add --all
   fi
 
   _staged_files=$(get_staged_files_count) || true
@@ -1428,11 +1409,11 @@ commit_changes() {
   if [ "$_staged_files" -ne 0 ]; then
     printf "\n"
     if [ $# -eq 0 ]; then
-      git -C "$DOTIG_PATH" commit
+      git -C "$DOTIG_REPO" commit
     else
       local _commit_msg=$1
       if [ -n "$_commit_msg" ]; then
-        git -C "$DOTIG_PATH" commit -m "$_commit_msg"
+        git -C "$DOTIG_REPO" commit -m "$_commit_msg"
       else
         invalid_usage "commit"
       fi
@@ -1451,7 +1432,7 @@ push_changes() {
   _unpushed_commits_count=$(get_unpushed_commits | wc -l)
 
   if [ "$_unpushed_commits_count" -ne 0 ]; then
-    git -C "$DOTIG_PATH" push
+    git -C "$DOTIG_REPO" push
     printf "\n"
     success "Commit(s) pushed!"
   else
@@ -1475,7 +1456,7 @@ pull_changes() {
 
   if ! is_repo_up_to_date "$_local_commit" "$_remote_commit" && is_pull_needed "$_local_commit" "$_common_ancestor"; then
     if ! is_repo_dirty; then
-      git -C "$DOTIG_PATH" pull --rebase
+      git -C "$DOTIG_REPO" pull --rebase
       printf "\n"
       success "Repo is now up-to-date!"
     else
@@ -1547,30 +1528,30 @@ print_dirty_expanded() {
   if is_repo_dirty; then
     if [ "$(get_modified_files_count)" -ge 1 ]; then
       printf "\n%s modified files:\n" "$(get_modified_files_count)"
-      git -C "$DOTIG_PATH" ls-files -m
+      git -C "$DOTIG_REPO" ls-files -m
     fi
     if [ "$(get_untracked_files_count)" -ge 1 ]; then
       printf "\n%s untracked files:\n" "$(get_untracked_files_count)"
-      git -C "$DOTIG_PATH" ls-files -o
+      git -C "$DOTIG_REPO" ls-files -o
     fi
     if [ "$(get_deleted_files_count)" -ge 1 ]; then
       printf "\n%s deleted files:\n" "$(get_deleted_files_count)"
-      git -C "$DOTIG_PATH" ls-files -d
+      git -C "$DOTIG_REPO" ls-files -d
     fi
     if [ "$(get_renamed_files_count)" -ge 1 ]; then
       printf "\n%s renamed files.\n" "$(get_renamed_files_count)"
     fi
     if [ "$(get_unmerged_files_count)" -ge 1 ]; then
       printf "\n%s unmerged files:\n" "$(get_unmerged_files_count)"
-      git -C "$DOTIG_PATH" ls-files -u
+      git -C "$DOTIG_REPO" ls-files -u
     fi
     if [ "$(get_stashed_count)" -ge 1 ]; then
       printf "\n%s stashed files:\n" "$(get_stashed_count)"
-      git -C "$DOTIG_PATH" stash list
+      git -C "$DOTIG_REPO" stash list
     fi
     if [ "$(get_staged_files_count)" -ge 1 ]; then
       printf "\n%s staged files:\n" "$(get_staged_files_count)"
-      git -C "$DOTIG_PATH" diff --name-only --cached
+      git -C "$DOTIG_REPO" diff --name-only --cached
     fi
   else
     printf "\nYou do not have any dirty files.\n"
@@ -2025,7 +2006,7 @@ return_menu() {
 launch_dotig_menu() {
   print_logo
   check_requirements
-  is_backup_repo_ready
+  init_dotfiles_repo
   set_xdg_paths
   [ $_show_repo_status = "true" ] && get_repo_status
   print_menu
@@ -2046,7 +2027,6 @@ call_add_dotfiles() {
       case $1 in
       --private | -p)
         _private_dotfiles="true"
-        set_dotig_path "$DOTFILES_PRIVATE"
         shift
         ;;
       --verbose | -v)
@@ -2057,6 +2037,7 @@ call_add_dotfiles() {
       esac
     done
 
+    init_dotfiles_repo
     add_dotfiles "$@"
   fi
 }
@@ -2084,7 +2065,6 @@ call_update_symlinks() {
         ;;
       --private | -p)
         _private_dotfiles="true"
-        set_dotig_path "$DOTFILES_PRIVATE"
         shift
         ;;
       --verbose | -v)
@@ -2095,6 +2075,7 @@ call_update_symlinks() {
       esac
     done
 
+    init_dotfiles_repo
     update_symlinks
   fi
 }
@@ -2116,7 +2097,6 @@ call_commit_changes() {
         ;;
       --private | -p)
         _private_dotfiles="true"
-        set_dotig_path "$DOTFILES_PRIVATE"
         shift
         ;;
       --tracked | -t)
@@ -2134,6 +2114,8 @@ call_commit_changes() {
       *) invalid_usage "commit" ;;
       esac
     done
+
+    init_dotfiles_repo
 
     if [ -n "$_commit_message" ]; then
       commit_changes "$_commit_message"
@@ -2153,7 +2135,6 @@ call_push_changes() {
       case $1 in
       --private | -p)
         _private_dotfiles="true"
-        set_dotig_path "$DOTFILES_PRIVATE"
         shift
         ;;
       --verbose | -v)
@@ -2164,6 +2145,7 @@ call_push_changes() {
       esac
     done
 
+    init_dotfiles_repo
     push_changes
   fi
 }
@@ -2178,7 +2160,6 @@ call_pull_changes() {
       case $1 in
       --private | -p)
         _private_dotfiles="true"
-        set_dotig_path "$DOTFILES_PRIVATE"
         shift
         ;;
       --verbose | -v)
@@ -2189,6 +2170,7 @@ call_pull_changes() {
       esac
     done
 
+    init_dotfiles_repo
     pull_changes
   fi
 }
@@ -2203,7 +2185,6 @@ call_update_all_submodules() {
       case $1 in
       --private | -p)
         _private_dotfiles="true"
-        set_dotig_path "$DOTFILES_PRIVATE"
         shift
         ;;
       --verbose | -v)
@@ -2214,6 +2195,7 @@ call_update_all_submodules() {
       esac
     done
 
+    init_dotfiles_repo
     update_all_submodules
   fi
 }
@@ -2228,7 +2210,6 @@ call_remove_symlinks() {
       case $1 in
       --private | -p)
         _private_dotfiles="true"
-        set_dotig_path "$DOTFILES_PRIVATE"
         shift
         ;;
       --verbose | -v)
@@ -2239,6 +2220,7 @@ call_remove_symlinks() {
       esac
     done
 
+    init_dotfiles_repo
     remove_symlinks
   fi
 }
@@ -2257,7 +2239,6 @@ call_get_repo_status() {
         ;;
       --private | -p)
         _private_dotfiles="true"
-        set_dotig_path "$DOTFILES_PRIVATE"
         shift
         ;;
       --verbose | -v)
@@ -2268,6 +2249,7 @@ call_get_repo_status() {
       esac
     done
 
+    init_dotfiles_repo
     get_repo_status
   fi
 }
@@ -2276,15 +2258,8 @@ call_get_repo_status() {
 # Require 1 or more arguments.
 # Argument 1: a valid command.
 handle_dotig_cli_commands() {
-  if [ "$_private_dotfiles" = "true" ]; then
-    set_dotig_path "$DOTFILES_PRIVATE"
-  else
-    set_dotig_path "$DOTFILES"
-  fi
-
-  _disable_menu="true"
-
   set_xdg_paths
+  _disable_menu="true"
 
   local _command_name=$1
   shift
