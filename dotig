@@ -169,10 +169,18 @@ is_dotig_cli_command() {
 
 # Check if the argument passed is the help option.
 # Argument 1: the option to test.
-is_command_help() {
+is_help_option() {
   [ $# -ne 1 ] && error_unexpected
 
   [ "$1" = "-h" ] || [ "$1" = "--help" ]
+}
+
+# Check if the provided argument matches the version option.
+# Argument 1: an argument to test.
+is_version_option() {
+  [ $# -ne 1 ] && error_unexpected
+
+  [ "$1" = "--version" ]
 }
 
 ###############################################################################
@@ -1996,311 +2004,320 @@ launch_dotig_menu() {
 ###############################################################################
 
 # Handle options for the add dotfiles command before calling it.
-call_add_dotfiles() {
-  if is_command_help "$1"; then
+launch_add_dotfiles() {
+  if is_help_option "$1"; then
     [ $# -gt 1 ] && invalid_usage "add"
     print_add_help
-  else
-    while [ $# -ge 1 ]; do
-      case $1 in
-      --private | -p)
-        _private_dotfiles="true"
-        shift
-        ;;
-      --verbose | -v)
-        _verbose="true"
-        shift
-        ;;
-      *) break ;;
-      esac
-    done
-
-    init_dotfiles_repo
-    add_dotfiles "$@"
+    exit
   fi
+
+  while [ $# -ge 1 ]; do
+    case $1 in
+    --private | -p)
+      _private_dotfiles="true"
+      shift
+      ;;
+    --verbose | -v)
+      _verbose="true"
+      shift
+      ;;
+    *) break ;;
+    esac
+  done
+
+  init_dotfiles_repo
+  add_dotfiles "$@"
 }
 
 # Handle options for the update symlinks command before calling it.
-call_update_symlinks() {
-  if is_command_help "$1"; then
+launch_update_symlinks() {
+  if is_help_option "$1"; then
     [ $# -gt 1 ] && invalid_usage "update"
     print_update_help
-  else
-    while [ $# -ge 1 ]; do
-      case $1 in
-      --ignore-all | -ia)
-        _ignore_duplicate="true"
-        _ignore_symlink_different_target="true"
-        shift
-        ;;
-      --ignore-duplicate | -id)
-        _ignore_duplicate="true"
-        shift
-        ;;
-      --ignore-target | -it)
-        _ignore_symlink_different_target="true"
-        shift
-        ;;
-      --private | -p)
-        _private_dotfiles="true"
-        shift
-        ;;
-      --verbose | -v)
-        _verbose="true"
-        shift
-        ;;
-      *) invalid_usage "update" ;;
-      esac
-    done
-
-    init_dotfiles_repo
-    update_symlinks
+    exit
   fi
+
+  while [ $# -ge 1 ]; do
+    case $1 in
+    --ignore-all | -ia)
+      _ignore_duplicate="true"
+      _ignore_symlink_different_target="true"
+      shift
+      ;;
+    --ignore-duplicate | -id)
+      _ignore_duplicate="true"
+      shift
+      ;;
+    --ignore-target | -it)
+      _ignore_symlink_different_target="true"
+      shift
+      ;;
+    --private | -p)
+      _private_dotfiles="true"
+      shift
+      ;;
+    --verbose | -v)
+      _verbose="true"
+      shift
+      ;;
+    *) invalid_usage "update" ;;
+    esac
+  done
+
+  init_dotfiles_repo
+  update_symlinks
 }
 
 # Handle options for the commit changes command before calling it.
-call_commit_changes() {
+launch_commit_changes() {
   local _commit_message
 
-  if is_command_help "$1"; then
+  if is_help_option "$1"; then
     [ $# -gt 1 ] && invalid_usage "commit"
     print_commit_help
+    exit
+  fi
+
+  while [ $# -ge 1 ]; do
+    case $1 in
+    --message | -m)
+      shift
+      _commit_message="$1"
+      shift
+      ;;
+    --private | -p)
+      _private_dotfiles="true"
+      shift
+      ;;
+    --tracked | -t)
+      _commit_files="tracked"
+      shift
+      ;;
+    --untracked | -u)
+      _commit_files="untracked"
+      shift
+      ;;
+    --verbose | -v)
+      _verbose="true"
+      shift
+      ;;
+    *) invalid_usage "commit" ;;
+    esac
+  done
+
+  init_dotfiles_repo
+
+  if [ -n "$_commit_message" ]; then
+    commit_changes "$_commit_message"
   else
-    while [ $# -ge 1 ]; do
-      case $1 in
-      --message | -m)
-        shift
-        _commit_message="$1"
-        shift
-        ;;
-      --private | -p)
-        _private_dotfiles="true"
-        shift
-        ;;
-      --tracked | -t)
-        _commit_files="tracked"
-        shift
-        ;;
-      --untracked | -u)
-        _commit_files="untracked"
-        shift
-        ;;
-      --verbose | -v)
-        _verbose="true"
-        shift
-        ;;
-      *) invalid_usage "commit" ;;
-      esac
-    done
-
-    init_dotfiles_repo
-
-    if [ -n "$_commit_message" ]; then
-      commit_changes "$_commit_message"
-    else
-      commit_changes
-    fi
+    commit_changes
   fi
 }
 
 # Handle options for the push changes command before calling it.
-call_push_changes() {
-  if is_command_help "$1"; then
+launch_push_changes() {
+  if is_help_option "$1"; then
     [ $# -gt 1 ] && invalid_usage "push"
     print_push_help
-  else
-    while [ $# -ge 1 ]; do
-      case $1 in
-      --private | -p)
-        _private_dotfiles="true"
-        shift
-        ;;
-      --verbose | -v)
-        _verbose="true"
-        shift
-        ;;
-      *) invalid_usage "push" ;;
-      esac
-    done
-
-    init_dotfiles_repo
-    push_changes
+    exit
   fi
+
+  while [ $# -ge 1 ]; do
+    case $1 in
+    --private | -p)
+      _private_dotfiles="true"
+      shift
+      ;;
+    --verbose | -v)
+      _verbose="true"
+      shift
+      ;;
+    *) invalid_usage "push" ;;
+    esac
+  done
+
+  init_dotfiles_repo
+  push_changes
 }
 
 # Handle options for the pull changes command before calling it.
-call_pull_changes() {
-  if is_command_help "$1"; then
+launch_pull_changes() {
+  if is_help_option "$1"; then
     [ $# -gt 1 ] && invalid_usage "pull"
     print_pull_help
-  else
-    while [ $# -ge 1 ]; do
-      case $1 in
-      --private | -p)
-        _private_dotfiles="true"
-        shift
-        ;;
-      --verbose | -v)
-        _verbose="true"
-        shift
-        ;;
-      *) invalid_usage "pull" ;;
-      esac
-    done
-
-    init_dotfiles_repo
-    pull_changes
+    exit
   fi
+
+  while [ $# -ge 1 ]; do
+    case $1 in
+    --private | -p)
+      _private_dotfiles="true"
+      shift
+      ;;
+    --verbose | -v)
+      _verbose="true"
+      shift
+      ;;
+    *) invalid_usage "pull" ;;
+    esac
+  done
+
+  init_dotfiles_repo
+  pull_changes
 }
 
 # Handle options for the update submodules command before calling it.
-call_update_all_submodules() {
-  if is_command_help "$1"; then
+launch_update_all_submodules() {
+  if is_help_option "$1"; then
     [ $# -gt 1 ] && invalid_usage "submodule"
     print_submodule_help
-  else
-    while [ $# -ge 1 ]; do
-      case $1 in
-      --private | -p)
-        _private_dotfiles="true"
-        shift
-        ;;
-      --verbose | -v)
-        _verbose="true"
-        shift
-        ;;
-      *) invalid_usage "submodule" ;;
-      esac
-    done
-
-    init_dotfiles_repo
-    update_all_submodules
+    exit
   fi
+
+  while [ $# -ge 1 ]; do
+    case $1 in
+    --private | -p)
+      _private_dotfiles="true"
+      shift
+      ;;
+    --verbose | -v)
+      _verbose="true"
+      shift
+      ;;
+    *) invalid_usage "submodule" ;;
+    esac
+  done
+
+  init_dotfiles_repo
+  update_all_submodules
 }
 
 # Handle options for the remove symlinks command before calling it.
-call_remove_symlinks() {
-  if is_command_help "$1"; then
+launch_remove_symlinks() {
+  if is_help_option "$1"; then
     [ $# -gt 1 ] && invalid_usage "rm"
     print_remove_help
-  else
-    while [ $# -ge 1 ]; do
-      case $1 in
-      --private | -p)
-        _private_dotfiles="true"
-        shift
-        ;;
-      --verbose | -v)
-        _verbose="true"
-        shift
-        ;;
-      *) invalid_usage "rm" ;;
-      esac
-    done
-
-    init_dotfiles_repo
-    remove_symlinks
+    exit
   fi
+
+  while [ $# -ge 1 ]; do
+    case $1 in
+    --private | -p)
+      _private_dotfiles="true"
+      shift
+      ;;
+    --verbose | -v)
+      _verbose="true"
+      shift
+      ;;
+    *) invalid_usage "rm" ;;
+    esac
+  done
+
+  init_dotfiles_repo
+  remove_symlinks
 }
 
 # Handle options for the get repo status command before calling it.
-call_get_repo_status() {
-  if is_command_help "$1"; then
+launch_get_repo_status() {
+  if is_help_option "$1"; then
     [ $# -gt 1 ] && invalid_usage "status"
     print_status_help
-  else
-    while [ $# -ge 1 ]; do
-      case $1 in
-      --expanded | -e)
-        _show_dirty_filenames="true"
-        shift
-        ;;
-      --private | -p)
-        _private_dotfiles="true"
-        shift
-        ;;
-      --verbose | -v)
-        _verbose="true"
-        shift
-        ;;
-      *) invalid_usage "status" ;;
-      esac
-    done
-
-    init_dotfiles_repo
-    get_repo_status
+    exit
   fi
+
+  while [ $# -ge 1 ]; do
+    case $1 in
+    --expanded | -e)
+      _show_dirty_filenames="true"
+      shift
+      ;;
+    --private | -p)
+      _private_dotfiles="true"
+      shift
+      ;;
+    --verbose | -v)
+      _verbose="true"
+      shift
+      ;;
+    *) invalid_usage "status" ;;
+    esac
+  done
+
+  init_dotfiles_repo
+  get_repo_status
 }
 
-# Redirect command to the right function.
+# Redirect provided command to the right function.
 # Require 1 or more arguments.
 # Argument 1: a valid command.
-handle_dotig_cli_commands() {
-  set_xdg_paths
-  _disable_menu="true"
+set_command() {
+  [ $# -eq 0 ] && error_unexpected
 
   local _command_name=$1
   shift
 
+  set_xdg_paths
+  _disable_menu="true"
+
   case $_command_name in
-  add) call_add_dotfiles "$@" ;;
-  update) call_update_symlinks "$@" ;;
-  commit) call_commit_changes "$@" ;;
-  push) call_push_changes "$@" ;;
-  pull) call_pull_changes "$@" ;;
-  submodule) call_update_all_submodules "$@" ;;
-  rm) call_remove_symlinks "$@" ;;
-  status) call_get_repo_status "$@" ;;
+  add) launch_add_dotfiles "$@" ;;
+  update) launch_update_symlinks "$@" ;;
+  commit) launch_commit_changes "$@" ;;
+  push) launch_push_changes "$@" ;;
+  pull) launch_pull_changes "$@" ;;
+  submodule) launch_update_all_submodules "$@" ;;
+  rm) launch_remove_symlinks "$@" ;;
+  status) launch_get_repo_status "$@" ;;
   *) error_unexpected ;;
   esac
 
   exit
 }
 
-# Set Dotig options according to the arguments passed through CLI
-# Require at least one argument.
-# Additional arguments are valid in some cases.
-set_dotig_options() {
+# Set Dotig options according to the provided arguments.
+# Require at least one argument. Additional arguments can be valid.
+set_options() {
   [ $# -eq 0 ] && error_unexpected
 
-  if is_command_help "$1"; then
+  if is_help_option "$1" || is_version_option "$1"; then
     [ $# -gt 1 ] && invalid_usage
     _disable_menu="true"
-    print_dotig_help
-    exit
-  elif [ "$1" = "--version" ]; then
-    [ $# -gt 1 ] && invalid_usage
-    _disable_menu="true"
-    print_dotig_version
-    check_dotig_updates
-    exit
-  else
-    while [ $# -ge 1 ]; do
-      case $1 in
-      --no-status | -ns)
-        _show_repo_status="false"
-        shift
-        ;;
-      --private | -p)
-        _private_dotfiles="true"
-        shift
-        ;;
-      --verbose | -v)
-        _verbose="true"
-        shift
-        ;;
-      *)
-        if is_dotig_cli_command "$1"; then
-          handle_dotig_cli_commands "$@"
-        else
-          invalid_usage
-        fi
-        ;;
-      esac
-    done
 
-    launch_dotig_menu
+    case $1 in
+    --help | -h) print_dotig_help ;;
+    --version) print_dotig_version ;;
+    *) error_unexpected ;;
+    esac
+
+    exit
   fi
+
+  while [ $# -ge 1 ]; do
+    case $1 in
+    --no-status | -ns)
+      _show_repo_status="false"
+      shift
+      ;;
+    --private | -p)
+      _private_dotfiles="true"
+      shift
+      ;;
+    --verbose | -v)
+      _verbose="true"
+      shift
+      ;;
+    *)
+      if is_dotig_cli_command "$1"; then
+        set_command "$@"
+      else
+        invalid_usage
+      fi
+      ;;
+    esac
+  done
+
+  launch_dotig_menu
 }
 
 ###############################################################################
@@ -2312,9 +2329,9 @@ main() {
   if [ $# -eq 0 ]; then
     launch_dotig_menu
   elif is_dotig_cli_command "$1"; then
-    handle_dotig_cli_commands "$@"
+    set_command "$@"
   else
-    set_dotig_options "$@"
+    set_options "$@"
   fi
 }
 
