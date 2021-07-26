@@ -692,32 +692,27 @@ set_dotfiles_repo() {
 }
 
 # Ask the remote name when multiple remotes exist.
-# Require 1 argument to store the remote name.
 # Return the remote name.
 ask_remote_name() {
   local _git_remotes
   local _current_branch
-  local _choice
+  local _remote_name
 
   _git_remotes=$(get_existing_remotes)
   _current_branch=$(get_current_branch)
 
-  warning "Your repo contains multiple remotes:"
-  printf "%s\n" "$_git_remotes"
-  printf "Choose the remote to use for %s: " "$(highlight "$_current_branch")"
-  read -r _choice
+  warning "Your repo contains multiple remotes:" >&2
+  option "$_git_remotes" >&2
+  while true; do
+    printf "\nChoose the remote to use for %s: " "$(highlight "$_current_branch")" >&2
+    read -r _remote_name
 
-  while ! is_valid_remote_name "$_choice" "$_git_remotes"; do
-    error "Remote name invalid."
-    printf "Use one of:\n"
-    printf "%s\n" "$(option "$_git_remotes")"
-    printf "Enter a valid remote name: "
-    read -r _choice
-  done
+    is_valid_remote_name "$_remote_name" "$_git_remotes" && break
+    error "Remote name invalid. Use one of:" >&2
+    option "$_git_remotes" >&2
+  done <&2
 
-  printf "\n"
-
-  eval "$1=$_choice"
+  printf "%s\n" "$_remote_name"
 }
 
 # Define the upstream branch and update the local repo.
@@ -726,10 +721,12 @@ set_upstream_branch() {
   local _remote_name
   local _remote_branch
 
+  verbose "Setting upstream branch..."
+
   _git_remotes=$(get_existing_remotes)
 
   if [ "$(printf "%s\n" "$_git_remotes" | wc -l)" -gt 1 ]; then
-    ask_remote_name _remote_name
+    _remote_name=$(ask_remote_name)
   else
     _remote_name=$_git_remotes
   fi
@@ -738,15 +735,6 @@ set_upstream_branch() {
 
   git -C "$DOTIG_REPO" fetch "$_remote_name"
   git -C "$DOTIG_REPO" checkout -t "$_remote_name"/"$_remote_branch"
-
-  verbose "$(success "Upstream set.")"
-}
-
-# Check if the upstream branch is set, if not define it.
-check_upstream() {
-  if [ -z "$(get_upstream_name)" ]; then
-    set_upstream_branch
-  fi
 }
 
 # Check if the provided remote URL is a remote repository.
@@ -759,7 +747,7 @@ is_valid_remote() {
   if [ -n "$_valid_remote" ]; then
     ! is_valid_remote_url "$_valid_remote" && printf "\n" && error "The remote URL is not valid. URL must starts with $(highlight "https") or $(highlight "git@")." && return 1
 
-    printf "\nChecking if this URL exists. Your SSH passphrase can be requested.\n"
+    printf "\nChecking if the provided remote exists. Your SSH passphrase can be requested.\n"
 
     ! is_existing_remote "$_valid_remote" && error "This remote URL does not exist." && return 1
 
@@ -773,7 +761,8 @@ is_valid_remote() {
 set_remote() {
   local _remote
 
-  printf "\nDotig needs to know your remote to perform some actions (status, push, pull).\n"
+  verbose $'\nDotig needs to know your remote to perform some actions (status, push, pull).'
+  verbose "Setting Git remote..."
 
   while ! is_valid_remote _remote; do
     printf "Please enter your remote address: "
@@ -781,37 +770,26 @@ set_remote() {
   done
 
   git -C "$DOTIG_REPO" remote add origin "$_remote"
-
-  verbose "$(success "Remote set.")"
-}
-
-# Check if the remote repository is set, if not define it.
-check_remote() {
-  if ! is_remote_set; then
-    verbose $'\n$(warning "Dotig is a Git repository but the remote is not set.")\n'
-    set_remote
-  fi
-}
-
-# Initialize the Git submodules.
-init_submodules() {
-  if has_submodules; then
-    verbose "Init submodules..."
-    update_submodules
-    verbose "$(success "All submodules have been initialized and updated.")"
-  fi
 }
 
 # Initialize a new Git repository with remote, upstream and submodules.
-init_git() {
-  git -C "$DOTIG_REPO" init
-  set_remote
-  set_upstream_branch
-  init_submodules
+configure_git() {
+  verbose "Checking if remote is set..."
+  ! is_remote_set && set_remote
+  verbose "$(success "Remote set.")"
+  verbose "Checking if upstream is set..."
+  [ -z "$(get_upstream_name)" ] && set_upstream_branch
+  verbose "$(success "Upstream set.")"
+  if has_submodules; then
+    verbose "Updating submodules..."
+    update_submodules
+    verbose "$(success "All submodules have been initialized and updated.")"
+  fi
+  verbose "$(success "Git initialized.")"
 }
 
 # Ask user if he wants to set the git repo then init git or exit.
-set_git_repo() {
+ask_to_init_git() {
   printf "\n"
   warning "Your dotfiles directory is not a Git repository."
 
@@ -820,13 +798,9 @@ set_git_repo() {
     read -r _choice
 
     case $_choice in
-    [yY])
-      init_git
-      return 0
-      ;;
+    [yY]) return 0 ;;
     [nN])
-      printf "\n"
-      warning "Dotig needs a Git repository to properly function. Please configure it manually before using this program."
+      warning $'\nDotig needs a Git repository to properly function. Please configure it manually before using this program.'
       printf "Exit.\n"
       exit
       ;;
@@ -842,11 +816,14 @@ check_git_configuration() {
   verbose $'\nChecking if Git is configured...'
 
   if ! is_git_repo; then
-    set_git_repo
-  else
-    check_remote
-    check_upstream
+    ask_to_init_git
+    verbose "Git initialization..."
+    git -C "$DOTIG_REPO" init
+    verbose "$(success "Git initialized.")"
   fi
+
+  configure_git
+  verbose "$(success "Git is configured.")"
 }
 
 # Initialize repo by checking path and Git configuration.
