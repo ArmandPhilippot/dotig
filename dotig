@@ -635,7 +635,7 @@ set_upstream_branch() {
 
 # Check if the upstream branch is set, if not define it.
 check_upstream() {
-  if ! get_upstream_name; then
+  if [ -z "$(get_upstream_name)" ]; then
     set_upstream_branch
   fi
 }
