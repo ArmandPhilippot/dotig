@@ -1389,43 +1389,76 @@ remove_symlinks() {
 # Handle commit, push and pull from Dotig.
 ###############################################################################
 
-# Commit all changes in the $DOTFILES repository.
-commit_changes() {
-  [ $# -gt 1 ] && invalid_usage
+# Commit only untracked files.
+git_add_untracked_files() {
+  verbose "Staging all untracked files..."
 
-  local _staged_files
+  if [ "$(get_untracked_files_count)" -gt 0 ]; then
+    git -C "$DOTIG_REPO" add "$(git -C "$DOTIG_REPO" ls-files -o --exclude-standard)"
+    verbose "$(success "All untracked files are staged.")"
+  else
+    printf "\nThere are no untracked files.\n"
+  fi
+}
 
-  if [ "$_commit_files" = "untracked" ]; then
-    if [ "$(get_untracked_files_count)" -gt 0 ]; then
-      git -C "$DOTIG_REPO" add "$(git -C "$DOTIG_REPO" ls-files -o --exclude-standard)"
+# Commit only tracked files.
+git_add_tracked_files() {
+  verbose "Staging all changes in tracked files..."
+
+  if [ "$(get_modified_files_count)" -gt 0 ] || [ "$(get_deleted_files_count)" -gt 0 ]; then
+    git -C "$DOTIG_REPO" add -u
+    verbose "$(success "All changes in tracked files are staged.")"
+  else
+    printf "\nThere are no modified or deleted files.\n"
+  fi
+}
+
+# Commit all changed and untracked files in Dotig repo.
+git_add_all() {
+  verbose "Staging all files in $(get_requested_env_var)..."
+  git -C "$DOTIG_REPO" add --all
+  verbose "$(success "All files in $(get_requested_env_var) are staged.")"
+}
+
+# Create a Git commit using staged files.
+# Argument 1 (optional): a commit message.
+create_commit() {
+  if [ $# -eq 0 ]; then
+    git -C "$DOTIG_REPO" commit
+  elif [ $# -eq 1 ]; then
+    local _commit_msg=$1
+    if [ -n "$_commit_msg" ]; then
+      git -C "$DOTIG_REPO" commit -m "$_commit_msg"
     else
-      printf "\nThere are no untracked files.\n"
-    fi
-  elif [ "$_commit_files" = "tracked" ]; then
-    if [ "$(get_modified_files_count)" -gt 0 ] || [ "$(get_deleted_files_count)" -gt 0 ]; then
-      git -C "$DOTIG_REPO" add -u
-    else
-      printf "\nThere are no modified or deleted files.\n"
+      invalid_usage "commit"
     fi
   else
-    git -C "$DOTIG_REPO" add --all
+    error_unexpected
+  fi
+}
+
+# Commit all changes in the $DOTFILES repository.
+# Argument 1 (optional): a commit message.
+commit_changes() {
+  [ $# -gt 1 ] && invalid_usage
+  local _staged_files
+
+  verbose "Creating a commit..."
+
+  if [ "$_commit_files" = "untracked" ]; then
+    git_add_untracked_files
+  elif [ "$_commit_files" = "tracked" ]; then
+    git_add_tracked_files
+  else
+    git_add_all
   fi
 
   _staged_files=$(get_staged_files_count) || true
 
   if [ "$_staged_files" -ne 0 ]; then
     printf "\n"
-    if [ $# -eq 0 ]; then
-      git -C "$DOTIG_REPO" commit
-    else
-      local _commit_msg=$1
-      if [ -n "$_commit_msg" ]; then
-        git -C "$DOTIG_REPO" commit -m "$_commit_msg"
-      else
-        invalid_usage "commit"
-      fi
-    fi
-    success "Changes committed!"
+    create_commit "$@"
+    success "Commit created!"
   else
     printf "\nCommit is not necessary, no staged files.\n"
   fi
@@ -1436,6 +1469,7 @@ commit_changes() {
 # Push all unpushed commits in $DOTFILES repository.
 push_changes() {
   local _unpushed_commits_count
+  verbose "Checking for commit to push..."
   _unpushed_commits_count=$(get_unpushed_commits | wc -l)
 
   if [ "$_unpushed_commits_count" -ne 0 ]; then
@@ -1455,6 +1489,7 @@ pull_changes() {
   local _remote_commit
   local _common_ancestor
 
+  verbose "Checking for changes in remote..."
   fetch_remote
 
   _local_commit=$(get_local_commit) || true
