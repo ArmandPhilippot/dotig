@@ -1651,7 +1651,9 @@ get_repo_status() {
 
 # Display the version number of Dotig.
 print_dotig_version() {
-  printf "\nYour Dotig version is: %s\n" "$DOTIG_VERSION"
+  verbose "Checking Dotig version..."
+  printf "Your Dotig version is: %s\n" "$(highlight "$DOTIG_VERSION")"
+  verbose "$(success "Dotig version checked.")"
   return_menu
 }
 
@@ -1670,31 +1672,34 @@ check_dotig_updates() {
   local _download_link
   local _not_found
 
-  if ! is_curl_installed; then
+  verbose "Checking for Dotig updates..."
+  verbose "Checking if curl is installed..."
+  if ! is_command_installed "curl"; then
     printf "\n"
     error "curl is needed to check for Dotig update. Please install it."
     return_menu
   fi
+  verbose "$(success "curl is installed.")"
 
+  verbose "Obtaining latest Dotig release..."
   _latest_release=$(get_latest_release)
   _not_found=$(printf "%s" "$_latest_release" | { grep -Po '"message": "Not Found"' || true; })
 
   [ "$_not_found" ] && printf "\n" && error "Could not find any release..." && return_menu
+  verbose "$(success "Latest release obtained.")"
 
   _tag_name=$(printf "%s" "$_latest_release" | grep -Po '"tag_name":.*?[^\\]",')
   _new_version=$(printf "%s" "$_tag_name" | grep -Po '(?=v).*(?=",)' | sed 's/^v//')
 
   if [ "$_new_version" = "$DOTIG_VERSION" ]; then
-    printf "\n"
     success "Your Dotig version is up to date!"
   else
     _download_zip=$(printf "%s" "$_latest_release" | grep -Po '"zipball_url":.*?[^\\]",')
     _download_link=$(printf "%s" "$_download_zip" | grep -Po 'http.*(?=",)')
 
-    printf "\n"
     warning "Your Dotig version is outdated!"
-    printf "A new version is available: %s\n" "$_new_version"
-    printf "You can download it here: %s\n" "$_download_link"
+    printf "A new version is available: %s\n" "$(highlight "$_new_version")"
+    printf "You can download it here: %s\n" "$(highlight "$_download_link")"
   fi
 
   return_menu
@@ -2351,7 +2356,10 @@ set_options() {
 
     case $1 in
     --help | -h) print_dotig_help ;;
-    --version) print_dotig_version ;;
+    --version)
+      print_dotig_version
+      check_dotig_updates
+      ;;
     *) error_unexpected ;;
     esac
 
