@@ -189,11 +189,11 @@ is_version_option() {
 ###############################################################################
 
 option() {
-  printf "%s%s%s" "$_color_blue" "$1" "$_color_reset"
+  printf "%s%s%s\n" "$_color_blue" "$1" "$_color_reset"
 }
 
 highlight() {
-  printf "%s%s%s" "$_color_magenta" "$1" "$_color_reset"
+  printf "%s%s%s\n" "$_color_magenta" "$1" "$_color_reset"
 }
 
 error() {
@@ -1546,6 +1546,7 @@ print_dirty_summary() {
   local _stashed_files_count
   local _expanded_status
 
+  verbose "Counting changed files..."
   _untracked_files_count=$(get_untracked_files_count) || true
   _staged_files_count=$(get_staged_files_count) || true
   _deleted_files_count=$(get_deleted_files_count) || true
@@ -1563,38 +1564,44 @@ print_dirty_summary() {
   [ "$_unmerged_files_count" -gt 0 ] && _expanded_status+="* $_unmerged_files_count unmerged files\n"
   [ "$_stashed_files_count" -gt 0 ] && _expanded_status+="* $_stashed_files_count stashed files\n"
 
+  verbose "$(success "Changed files counted.")"
   printf "%b" "$_expanded_status"
 }
 
+# Display the list of changed files by category.
 print_dirty_expanded() {
+  verbose "Compiling the list of changed files..."
+
   if is_repo_dirty; then
     if [ "$(get_modified_files_count)" -ge 1 ]; then
       printf "\n%s modified files:\n" "$(get_modified_files_count)"
-      git -C "$DOTIG_REPO" ls-files -m
+      highlight "$(git -C "$DOTIG_REPO" ls-files -m)"
     fi
     if [ "$(get_untracked_files_count)" -ge 1 ]; then
       printf "\n%s untracked files:\n" "$(get_untracked_files_count)"
-      git -C "$DOTIG_REPO" ls-files -o
+      highlight "$(git -C "$DOTIG_REPO" ls-files -o)"
     fi
     if [ "$(get_deleted_files_count)" -ge 1 ]; then
       printf "\n%s deleted files:\n" "$(get_deleted_files_count)"
-      git -C "$DOTIG_REPO" ls-files -d
+      highlight "$(git -C "$DOTIG_REPO" ls-files -d)"
     fi
     if [ "$(get_renamed_files_count)" -ge 1 ]; then
       printf "\n%s renamed files.\n" "$(get_renamed_files_count)"
     fi
     if [ "$(get_unmerged_files_count)" -ge 1 ]; then
       printf "\n%s unmerged files:\n" "$(get_unmerged_files_count)"
-      git -C "$DOTIG_REPO" ls-files -u
+      highlight "$(git -C "$DOTIG_REPO" ls-files -u)"
     fi
     if [ "$(get_stashed_count)" -ge 1 ]; then
       printf "\n%s stashed files:\n" "$(get_stashed_count)"
-      git -C "$DOTIG_REPO" stash list
+      highlight "$(git -C "$DOTIG_REPO" stash list)"
     fi
     if [ "$(get_staged_files_count)" -ge 1 ]; then
       printf "\n%s staged files:\n" "$(get_staged_files_count)"
-      git -C "$DOTIG_REPO" diff --name-only --cached
+      highlight "$(git -C "$DOTIG_REPO" diff --name-only --cached)"
     fi
+
+    verbose "$(success "List of changed files compiled.")"
   else
     printf "\nYou do not have any dirty files.\n"
   fi
@@ -1608,7 +1615,7 @@ get_repo_status() {
   local _remote_commit
   local _common_ancestor
 
-  printf "\nChecking status...\n"
+  verbose "Checking status..."
   printf "Your SSH passphrase can be requested.\n"
   fetch_remote
 
@@ -1633,6 +1640,8 @@ get_repo_status() {
   else
     status -s "clean repo!"
   fi
+
+  verbose "$(success "Status checked.")"
 }
 
 ###############################################################################
