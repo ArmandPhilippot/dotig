@@ -100,7 +100,7 @@ If it is the first time you run Dotig, you may want to use the `--verbose` optio
 
 ## CLI
 
-If you want to use Dotig from CLI, you need to set the `DOTFILES` environment variable. See [Configuration](#configuration).
+If you want to use Dotig from CLI, it is recommended to set the `DOTFILES` environment variable. See [Configuration](#configuration).
 ### Commands
 
 |Commands|Usage|Description|
@@ -140,7 +140,7 @@ Each command also has its own options. You can see them with: `dotig <command> -
 
 You can add Dotig manually to your `PATH` to execute it from everywhere or, according to your distribution, simply add the file to `$HOME/.local/bin` (which may be in your `PATH` by default).
 
-In order for the script to remember your dotfiles directory, you may want to define an environment variable `DOTFILES` in your shell configuration files (like `~/.profile` for Bash or `~/.zshenv` for Zsh). It is also needed if you want to use Dotig from CLI.
+In order for the script to remember your dotfiles directory, you may want to define an environment variable `DOTFILES` in your shell configuration files (like `~/.profile` for Bash or `~/.zshenv` for Zsh).
 
 Example:
 
