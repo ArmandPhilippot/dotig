@@ -326,7 +326,7 @@ is_file_in() {
   esac
 }
 
-# Use XDG Spefication to handle dotfiles and symlinks.
+# Use XDG Specification to handle dotfiles and symlinks.
 # Check if XDG path are set, if not set them.
 set_xdg_paths() {
   if is_linux; then
@@ -339,6 +339,163 @@ set_xdg_paths() {
   else
     error "Only Linux is supported."
     exit 2
+  fi
+}
+
+# Convert a file path to Dotig format based on XDG Specification.
+# Argument 1: a path to convert.
+convert_to_dotig_format() {
+  [ $# -ne 1 ] && error_unexpected
+  local _dotfile=$1
+  local _dotig_format
+  local _partial_dest
+  local _removed_part
+
+  case $_dotfile in
+  "$XDG_BIN_HOME"*)
+    _partial_dest="home/xdg_bin"
+    _removed_part=$XDG_BIN_HOME
+    ;;
+  "$XDG_CACHE_HOME"*)
+    _partial_dest="home/xdg_cache"
+    _removed_part=$XDG_CACHE_HOME
+    ;;
+  "$XDG_CONFIG_HOME"*)
+    _partial_dest="home/xdg_config"
+    _removed_part=$XDG_CONFIG_HOME
+    ;;
+  "$XDG_DATA_HOME"*)
+    _partial_dest="home/xdg_data"
+    _removed_part=$XDG_DATA_HOME
+    ;;
+  "$XDG_LIB_HOME"*)
+    _partial_dest="home/xdg_lib"
+    _removed_part=$XDG_LIB_HOME
+    ;;
+  "$XDG_STATE_HOME"*)
+    _partial_dest="home/xdg_state"
+    _removed_part=$XDG_STATE_HOME
+    ;;
+  "$HOME"*)
+    _partial_dest="home"
+    _removed_part=$HOME
+    ;;
+  *) _dotfile=${_dotfile/\//} ;;
+  esac
+
+  _dotig_format=${DOTIG_REPO}${_partial_dest}${_dotfile#$_removed_part}
+  printf "%s\n" "$_dotig_format"
+}
+
+# Convert a file path to $HOME format based on XDG Specification.
+# Argument 1: a path to convert.
+convert_to_home_format() {
+  [ $# -ne 1 ] && error_unexpected
+  local _dotfile=$1
+  local _home_format
+  local _partial_dest
+  local _removed_part
+
+  case $_dotfile in
+  "${DOTIG_REPO}home/xdg_bin"*)
+    _partial_dest=$XDG_BIN_HOME
+    _removed_part="home/xdg_bin"
+    ;;
+  "${DOTIG_REPO}home/xdg_cache"*)
+    _partial_dest=$XDG_CACHE_HOME
+    _removed_part="home/xdg_cache"
+    ;;
+  "${DOTIG_REPO}home/xdg_config"*)
+    _partial_dest=$XDG_CONFIG_HOME
+    _removed_part="home/xdg_config"
+    ;;
+  "${DOTIG_REPO}home/xdg_data"*)
+    _partial_dest=$XDG_DATA_HOME
+    _removed_part="home/xdg_data"
+    ;;
+  "${DOTIG_REPO}home/xdg_lib"*)
+    _partial_dest=$XDG_LIB_HOME
+    _removed_part="home/xdg_lib"
+    ;;
+  "${DOTIG_REPO}home/xdg_state"*)
+    _partial_dest=$XDG_STATE_HOME
+    _removed_part="home/xdg_state"
+    ;;
+  "${DOTIG_REPO}home"*)
+    _partial_dest=$HOME
+    _removed_part="home"
+    ;;
+  *) _partial_dest="/" ;;
+  esac
+
+  _home_format=${_partial_dest}${_dotfile#${DOTIG_REPO}${_removed_part}}
+  printf "%s\n" "$_home_format"
+}
+
+# Create any missing directory in a provided path.
+# Argument 1: a path.
+create_file_path() {
+  [ $# -ne 1 ] && error_unexpected
+  local _file=$1
+
+  verbose "Creating any missing directory..."
+  mkdir -p "$(dirname "$_file")"
+  verbose "$(success "Any missing directories have been created.")"
+}
+
+# Move file from its source to its destination.
+# Argument 1: a file path.
+# Argument 2: the file destination.
+move_file() {
+  [ $# -ne 2 ] && error_unexpected
+  local _source=$1
+  local _dest=$2
+
+  verbose "Moving $(highlight "$_source") to $(highlight "$_dest")..."
+  mv "$_source" "$_dest"
+  verbose "$(success "$(highlight "$_source") moved.")"
+}
+
+# Symlink a file.
+# Argument 1: a file path.
+# Argument 2: the symlink destination.
+symlink_file() {
+  [ $# -ne 2 ] && error_unexpected
+  local _source_file=$1
+  local _symlink_dest=$2
+
+  verbose "Symlinking $(highlight "$_source_file") to $(highlight "$_symlink_dest")..."
+  ln -s "$_source_file" "$_symlink_dest"
+  success "Symlink $(highlight "$_symlink_dest") created."
+}
+
+# Copy a file from a path to another.
+# Argument 1: a file path.
+# Argument 2: the file destination.
+copy_file() {
+  [ $# -ne 2 ] && error_unexpected
+  local _source_path=$1
+  local _copy_path=$2
+
+  verbose "Copying $(highlight "$_source_path") to $(highlight "$_copy_path")..."
+  cp "$_source_path" "$_copy_path"
+  verbose "$(success "$(highlight "$_source_path") copied.")"
+}
+
+# Remove a file in $HOME.
+# Argument 1: a file path.
+remove_file() {
+  [ $# -ne 1 ] && error_unexpected
+  local _dotfile=$1
+
+  verbose "Removing $(highlight "$_dotfile")..."
+  if is_file_in "$_dotfile" "$HOME"; then
+    rm "$_dotfile"
+    verbose "$(success "$(highlight "$_dotfile") removed.")"
+    return 0
+  else
+    error "$(highlight "$_dotfile") is not in \$HOME, cannot remove it."
+    return 1
   fi
 }
 
@@ -852,131 +1009,117 @@ init_dotfiles_repo() {
 # Handle dotfiles backup and symlinks update/removal.
 ###############################################################################
 
+# Move or copy dotfile to Dotig repo and symlink it if it is in $HOME.
+# Argument 1: a dotfile path.
+# Argument 2: the backup destination.
+create_dotfile_backup() {
+  [ $# -ne 2 ] && error_unexpected
+  local _dotfile=$1
+  local _backup=$2
+
+  create_file_path "$_backup"
+
+  if is_file_in "$_dotfile" "$HOME"; then
+    move_file "$_dotfile" "$_backup"
+    symlink_file "$_backup" "$_dotfile"
+  else
+    copy_file "$_dotfile" "$_backup"
+    warning "Symlink will not be created. $(highlight "$_source_path") is not in \$HOME!"
+  fi
+}
+
 # Display the diff between two files.
 # Argument 1: the file residing in $HOME.
-# Argument 2: the file residing in $DOTFILES.
-print_diff() {
-  local _home_dotfile=$1
-  local _backup_dotfile=$2
+# Argument 2: the file residing in Dotig repo.
+print_dotfiles_diff() {
+  [ $# -ne 2 ] && error_unexpected
+  local _dotfile=$1
+  local _backup=$2
   local _filename
   local _column_width
   local _padding
   local _padding_lenght
   local _divider
 
+  verbose "Checking diff..."
   [ ! $COLUMNS ] && COLUMNS=$(stty size | awk '{print $2}')
   _column_width=$(("$COLUMNS" / 2))
-  _filename=$(basename "$_home_dotfile")
+  _filename=$(basename "$_dotfile")
   _padding=$(printf '%*s' "$COLUMNS" "")
   _padding_lenght=$((_column_width - ${#HOME}))
   _divider=${_padding// /=}
 
-  if diff -q "$_home_dotfile" "$_backup_dotfile" >/dev/null 2>&1; then
-    printf "\nBoth files are identical.\n"
-  else
-    printf "\nThe two files are different. See the diff of %s:\n\n" "$(highlight "$_filename")"
-    printf "%s%0.${_padding_lenght}s%s\n" "$HOME" "$_padding" "$DOTIG_REPO"
-    printf "%s\n" "$_divider"
-    command diff --color -y --width="$COLUMNS" -t --suppress-common-lines "$_home_dotfile" "$_backup_dotfile" || [ $? -eq 1 ]
-  fi
-}
-
-# Display the available choices in case of duplicate files.
-print_duplicate_menu() {
-  printf "[%s] Show diff\n" "$(option "1")"
-  printf "[%s] Use %s (delete the other)\n" "$(option "2")" "$(highlight "$_home_dotfile")"
-  printf "[%s] Use %s (delete the other)\n" "$(option "3")" "$(highlight "$_backup_dotfile")"
-  printf "[%s] Skip this file\n" "$(option "4")"
-}
-
-# Execute the action specified by the user in case of duplication.
-# Argument 1: the file residing in $HOME.
-# Argument 2: the file residing in $DOTFILES.
-handle_duplicate() {
-  local _choice
-  local _home_dotfile=$1
-  local _backup_dotfile=$2
-
-  if [ $_ignore_duplicate = "true" ]; then
-    skipped "$_home_dotfile (duplicate)"
+  if diff -q "$_dotfile" "$_backup" >/dev/null 2>&1; then
+    success "Both files are identical."
   else
     printf "\n"
-    warning "A file with the same name already exists."
-
-    [ -h "$_backup_dotfile" ] && warning "$(highlight "$_backup_dotfile") is a symlink."
-    [ -h "$_home_dotfile" ] && warning "$(highlight "$_home_dotfile") is a symlink."
-
-    printf "How do you want to proceed?\n"
-
-    while true; do
-      print_duplicate_menu
-      printf "Your choice: "
-      read -r _choice
-
-      case $_choice in
-      1)
-        print_diff "$_home_dotfile" "$_backup_dotfile"
-        printf "\n"
-        ;;
-      2)
-        mv -f "$_home_dotfile" "$_backup_dotfile"
-        ln -s "$_backup_dotfile" "$_home_dotfile"
-        printf "\n"
-        success "$(highlight "$_backup_dotfile") replaced with $(highlight "$_home_dotfile") and symlink created."
-        break
-        ;;
-      3)
-        rm "$_home_dotfile"
-        ln -s "$_backup_dotfile" "$_home_dotfile"
-        printf "\n"
-        success "$(highlight "$_home_dotfile") replaced with a symlink."
-        break
-        ;;
-      4)
-        skipped "$_home_dotfile"
-        break
-        ;;
-      *)
-        printf "\n"
-        error "Choose between $(option "1"), $(option "2"), $(option "3") or $(option "4")."
-        ;;
-      esac
-    done
+    warning "The two files are different. See the diff of %s:\n" "$(highlight "$_filename")"
+    printf "%s%0.${_padding_lenght}s%s\n" "$HOME" "$_padding" "$DOTIG_REPO"
+    printf "%s\n" "$_divider"
+    command diff --color -y --width="$COLUMNS" -t --suppress-common-lines "$_dotfile" "$_backup" || [ $? -eq 1 ]
   fi
+
+  verbose "$(success "Diff checked.")"
+  printf "\n"
 }
 
-# Create and symlink the backup dotfile depending on the dotfile location.
-# Argument 1: the dotfile
-# Argument 2: the backup dotfile
-create_backup_dotfile() {
+# Ask how to handle existing dotfile in $HOME that matches a file in Dotig repo.
+# Argument 1: a dotfile in $HOME.
+# Argument 2: a backup in Dotig rpeo.
+ask_duplicate_dotfile() {
   [ $# -ne 2 ] && error_unexpected
-
   local _dotfile=$1
-  local _backup_dotfile=$2
+  local _backup=$2
+  local _user_choice
 
-  verbose "Creating path if not already present..."
-  mkdir -p "$(dirname "$_backup_dotfile")"
+  printf "\n"
+  verbose "Handling duplicate..."
+  warning "Both $(highlight "$_dotfile") and $(highlight "$_backup") already exist."
+  [ -h "$_dotfile" ] && warning "$(highlight "$_dotfile") is a symlink."
+  [ -h "$_backup" ] && warning "$(highlight "$_backup") is a symlink."
 
-  if is_file_in "$_dotfile" "$HOME"; then
-    verbose "Moving $_dotfile to $_backup_dotfile..."
-    mv "$_dotfile" "$_backup_dotfile"
-    verbose "Symlinking $_backup_dotfile to $_dotfile..."
-    ln -s "$_backup_dotfile" "$_dotfile"
-    success "$(highlight "$_dotfile") moved and symlink created."
-  else
-    verbose "Copying $_dotfile to $_backup_dotfile..."
-    cp "$_dotfile" "$_backup_dotfile"
-    success "$(highlight "$_dotfile") copied."
-    warning "Symlink not created. $(highlight "$_dotfile") is not in $HOME!"
-  fi
+  while true; do
+    printf "How do you want to proceed?\n"
+    printf "[%s] Show diff\n" "$(option "1")"
+    printf "[%s] Keep %s (delete the other)\n" "$(option "2")" "$(highlight "$_dotfile")"
+    printf "[%s] Keep %s (delete the other)\n" "$(option "3")" "$(highlight "$_backup")"
+    printf "[%s] Skip\n" "$(option "4")"
+    printf "Your choice: "
+    read -r _user_choice
+
+    case $_user_choice in
+    1) print_dotfiles_diff "$_dotfile" "$_backup" ;;
+    2)
+      create_dotfile_backup "$_dotfile" "$_backup"
+      break
+      ;;
+    3)
+      if remove_file "$_dotfile"; then
+        symlink_file "$_backup" "$_dotfile"
+      else
+        skipped "$_dotfile"
+      fi
+      break
+      ;;
+    4)
+      skipped "$_dotfile"
+      break
+      ;;
+    *)
+      printf "\n"
+      error "Choose between $(option "1"), $(option "2"), $(option "3") or $(option "4")."
+      ;;
+    esac
+  done
+
+  verbose "$(success "Duplicate handled.")"
 }
 
-# Move the dotfiles from $HOME to $DOTFILES and create a symlink.
+# Move the provided dotfiles to Dotig repo.
 # Accept 0 or more arguments. If arguments are provided, files are expected.
 add_dotfiles() {
   local _dotfiles
-  local _partial_dest
-  local _removed_part
+  local _dotfile
   local _backup_dotfile
 
   if [ $# -eq 0 ]; then
@@ -986,62 +1129,29 @@ add_dotfiles() {
     _dotfiles=("$@")
   fi
 
+  verbose "Adding new dotfile(s)..."
+
   for _dotfile in "${_dotfiles[@]}"; do
     _dotfile=$(get_absolute_path "$_dotfile")
     [ ! -e "$_dotfile" ] && error "$(highlight "$_dotfile") is not a file." && exit 2
-
-    case $_dotfile in
-    "$XDG_BIN_HOME"*)
-      _partial_dest="home/xdg_bin"
-      _removed_part="$XDG_BIN_HOME"
-      ;;
-    "$XDG_CACHE_HOME"*)
-      _partial_dest="/home/xdg_cache"
-      _removed_part="$XDG_CACHE_HOME"
-      ;;
-    "$XDG_CONFIG_HOME"*)
-      _partial_dest="/home/xdg_config"
-      _removed_part="$XDG_CONFIG_HOME"
-      ;;
-    "$XDG_DATA_HOME"*)
-      _partial_dest="/home/xdg_data"
-      _removed_part="$XDG_DATA_HOME"
-      ;;
-    "$XDG_LIB_HOME"*)
-      _partial_dest="/home/xdg_lib"
-      _removed_part="$XDG_LIB_HOME"
-      ;;
-    "$XDG_STATE_HOME"*)
-      _partial_dest="/home/xdg_state"
-      _removed_part="$XDG_STATE_HOME"
-      ;;
-    "$HOME"*)
-      _partial_dest="/home"
-      _removed_part="$HOME"
-      ;;
-    *)
-      _partial_dest=""
-      _removed_part=""
-      ;;
-    esac
-
-    _backup_dotfile="${DOTIG_REPO}${_partial_dest}${_dotfile#$_removed_part}"
+    _backup_dotfile=$(convert_to_dotig_format "$_dotfile")
 
     if [ -e "$_backup_dotfile" ]; then
-      handle_duplicate "$_dotfile" "$_backup_dotfile"
+      ask_duplicate_dotfile "$_dotfile" "$_backup_dotfile"
     else
-      create_backup_dotfile "$_dotfile" "$_backup_dotfile"
+      create_dotfile_backup "$_dotfile" "$_backup_dotfile"
     fi
   done
 
+  verbose "$(success "Dotfile(s) have been added.")"
   return_menu
 }
 
-# Find all dotfiles in the backup path excluding submodules.
+# Find all dotfiles in the Dotig repo excluding submodules.
 # Return a list of files.
 get_backup_dotfiles() {
-  local _find_cmd
   local _exclude_dirs=()
+  local _find_cmd
   local _tmp
 
   _tmp=$(mktemp "${TMPDIR:-/tmp}/dotig.XXXXXX")
@@ -1051,79 +1161,14 @@ get_backup_dotfiles() {
 
   rm "$_tmp"
   _exclude_dirs+=('.git')
-
   _find_cmd=(find "$DOTIG_REPO" -mindepth 2 \( -type f -o -type l \))
 
   for _exclude_dir in "${_exclude_dirs[@]}"; do
     _find_cmd+=(-not \( -path "$DOTIG_REPO${_exclude_dir}/*" -prune \))
   done
+
   _find_cmd+=(-print)
-
   "${_find_cmd[@]}"
-}
-
-# Handle existing symlink: check if the symlink target is the expected one or
-# ask user which action to perform.
-# Argument 1: the file (or symlink) residing in the backup path.
-# Argument 2: the symlink residing in $HOME.
-handle_target_update() {
-  [ $# -ne 2 ] && error_unexpected
-
-  local _file=$1
-  local _file_target
-  local _symlink=$2
-  local _symlink_target
-  local _extra_info
-  local _choice
-
-  _symlink_target=$(readlink -f "$_symlink") || true
-  [ -z "$_symlink_target" ] && _symlink_target="Target does not exist."
-
-  if [ "$_symlink_target" = "$_file" ]; then
-    verbose "A symlink with the same target already exists."
-    verbose "$(skipped "$_file")"
-  elif [ $_ignore_symlink_different_target = "true" ]; then
-    skipped "$_file (different target)"
-  else
-    if [ -h "$_file" ]; then
-      _extra_info=" (also a symlink)"
-      _file_target=$(readlink -f "$_file") || true
-      [ -z "$_file_target" ] && _file_target="Target does not exist."
-    fi
-
-    printf "\n"
-    warning "A symlink exists but its target does not match your dotfile backup:"
-    printf "* Symlink: %s\n" "$(highlight "$_symlink")"
-    printf "* Symlink target: %s\n" "$(highlight "$_symlink_target")"
-    printf "* Backup file%s: %s\n" "$_extra_info" "$(highlight "$_file")"
-    [ -h "$_file" ] && printf "* Backup target: %s\n" "$(highlight "$_file_target")"
-
-    while true; do
-      printf "How do you want to proceed?\n"
-      printf "[%s] Update the symlink\n" "$(option "1")"
-      printf "[%s] Skip this file\n" "$(option "2")"
-      printf "Your choice: "
-      read -r _choice
-
-      case $_choice in
-      1)
-        verbose "Updating symlink target..."
-        ln -s -f "$_file" "$_symlink"
-        success "$(highlight "$_symlink") updated."
-        break
-        ;;
-      2)
-        printf "\n"
-        skipped "$_file"
-        break
-        ;;
-      *)
-        printf "\n"
-        error "Enter $(option "1") or $(option "2")."
-        ;;
-      esac
-    done
-  fi
 }
 
 # Find all broken symlinks in $HOME whose target is in $DOTFILES.
@@ -1131,56 +1176,143 @@ get_broken_symlinks() {
   find "$HOME" -type l -not \( -path "$DOTIG_REPO/*" -prune \) -ilname "$DOTIG_REPO*" ! -exec test -e {} \; -print
 }
 
-# Remove broken symlinks in $HOME whose target is in $DOTFILES.
+# Remove broken symlinks in $HOME whose target is in Dotig repo.
 remove_broken_symlinks() {
   local _tmp
+  local _file
 
-  printf "\nChecking for broken symlinks...\n"
-
+  verbose $'\nChecking for broken symlinks...'
   _tmp=$(mktemp "${TMPDIR:-/tmp}/dotig.XXXXXX")
   get_broken_symlinks >"$_tmp"
 
   if [ -s "$_tmp" ]; then
-    while IFS= read -r file <&3; do
-      rm "$file"
-      verbose "$(success "$(highlight "$file") removed...")"
+    verbose "Removing broken symlinks..."
+
+    while IFS= read -r _file <&3; do
+      remove_file "$_file"
     done 3<"$_tmp"
 
-    success "All broken symlinks removed..."
+    verbose "$(success "All broken symlinks removed...")"
   else
-    printf "No broken symlinks found.\n"
+    verbose "No broken symlinks found."
   fi
 
   rm "$_tmp"
+  verbose "$(success "Broken symlinks checked.")"
 }
 
-# Update symlink: create it if not already created or handle conflicts.
-# Argument 1: the dotfile
-# Argument 2: the backup dotfile
-update_backup_symlink() {
+# Ask user which action to perform in case of symlink target conflict.
+# Argument 1: a backup in Dotig repo.
+# Argument 2: the symlink in $HOME.
+ask_target_conflict() {
   [ $# -ne 2 ] && error_unexpected
+  local _backup=$1
+  local _home_symlink=$2
+  local _user_choice
 
-  local _dotfile=$1
-  local _backup_dotfile=$2
+  while true; do
+    printf "How do you want to proceed?\n"
+    printf "[%s] Replace\n" "$(option "1")"
+    printf "[%s] Skip\n" "$(option "2")"
+    printf "Your choice: "
+    read -r _user_choice
 
-  if is_file_in "$_dotfile" "$HOME"; then
-    if [ -h "$_dotfile" ]; then
-      handle_target_update "$_backup_dotfile" "$_dotfile"
-    elif [ -f "$_dotfile" ]; then
-      handle_duplicate "$_dotfile" "$_backup_dotfile"
-    else
-      verbose "Creating symlink from $_backup_dotfile to $_dotfile"
-      mkdir -p "$(dirname "$_dotfile")"
-      ln -s "$_backup_dotfile" "$_dotfile"
-      verbose "Symlink created for $(highlight "$_backup_dotfile")."
-    fi
+    case $_user_choice in
+    1)
+      return 0
+      break
+      ;;
+    2)
+      return 1
+      break
+      ;;
+    *) error "Enter $(option "1") or $(option "2")." ;;
+    esac
+  done
+}
+
+# Handle symlink whose target does not match backup in Dotig repo.
+# Argument 1: a backup in Dotig repo.
+# Argument 2: the symlink in $HOME.
+# Argument 3: the symlink target.
+handle_target_conflict() {
+  [ $# -ne 3 ] && error_unexpected
+  local _backup=$1
+  local _home_symlink=$2
+  local _home_symlink_target=$3
+  local _backup_target
+  local _file_info
+
+  if [ -h "$_backup" ]; then
+    _file_info=" (also a symlink)"
+    _backup_target=$(readlink -f "$_backup") || true
+    [ -z "$_backup_target" ] && _backup_target="Target does not exist."
+  fi
+
+  warning "A symlink exists but its target does not match your dotfile backup."
+  warning "Symlink: $(highlight "$_home_symlink")"
+  warning "Symlink target: $(highlight "$_home_symlink_target")"
+  warning "Backup${_file_info}: $(highlight "$_backup")"
+  [ -h "$_backup" ] && warning "Backup target: $(highlight "$_backup_target")"
+
+  if ask_target_conflict "$_backup" "$_home_symlink"; then
+    verbose "Updating symlink target..."
+    ln -s -f "$_backup" "$_home_symlink"
+    success "$(highlight "$_home_symlink") updated."
   else
-    warning "$(highlight "$_dotfile") is not in $HOME. Symlink skipped."
+    skipped "$(highlight "$_backup")"
   fi
 }
 
-# Create or update all symlinks in $HOME based on the dotfiles in the backup
-# path and remove the broken symlinks.
+# Check if symlink target matches backup in Dotig repo.
+# Argument 1: a backup in Dotig repo.
+# Argument 2: the symlink in $HOME.
+check_symlink_target() {
+  [ $# -ne 2 ] && error_unexpected
+  local _backup=$1
+  local _home_symlink=$2
+  local _home_symlink_target
+
+  verbose "Handling target conflict..."
+  _home_symlink_target=$(readlink -f "$_home_symlink") || true
+  [ -z "$_home_symlink_target" ] && _home_symlink_target="Target does not exist."
+
+  if [ "$_home_symlink_target" = "$_backup" ]; then
+    skipped "$(highlight "$_home_symlink") is up-to-date."
+  else
+    if [ $_ignore_symlink_different_target = "true" ]; then
+      skipped "$_home_symlink (different target)."
+    else
+      handle_target_conflict "$_backup" "$_home_symlink" "$_home_symlink_target"
+    fi
+  fi
+
+  verbose "$(success "Target conflict handled.")"
+}
+
+# Update dotfiles in $HOME based on those in Dotig repo.
+# Argument 1: a file in Dotig repo.
+# Argument 2: the symlink destination.
+update_dotfiles_in_home() {
+  [ $# -ne 2 ] && error_unexpected
+  local _source=$1
+  local _dest=$2
+
+  if [ -h "$_dest" ]; then
+    check_symlink_target "$_source" "$_dest"
+  elif [ -f "$_dest" ]; then
+    if [ $_ignore_duplicate = "true" ]; then
+      skipped "$(highlight "$_dest") (duplicate)."
+    else
+      ask_duplicate_dotfile "$_dest" "$_source"
+    fi
+  else
+    create_file_path "$_dest"
+    symlink_file "$_source" "$_dest"
+  fi
+}
+
+# Update files on user computer based on those in Dotig repo.
 update_symlinks() {
   local _backup_dotfile
   local _dotfile
@@ -1188,178 +1320,67 @@ update_symlinks() {
 
   _tmp=$(mktemp "${TMPDIR:-/tmp}/dotig.XXXXXX")
   get_backup_dotfiles >"$_tmp"
+  verbose $'\nUpdating symlinks...'
 
-  while IFS= read -r _backup_dotfile <&3; do
-    case $_backup_dotfile in
-    "${DOTIG_REPO}home/xdg_bin/"*)
-      _partial_dest="$XDG_BIN_HOME"
-      _removed_part="${DOTIG_REPO}home/xdg_bin"
-      ;;
-    "${DOTIG_REPO}home/xdg_cache/"*)
-      _partial_dest="$XDG_CACHE_HOME"
-      _removed_part="${DOTIG_REPO}home/xdg_cache"
-      ;;
-    "${DOTIG_REPO}home/xdg_config/"*)
-      _partial_dest="$XDG_CONFIG_HOME"
-      _removed_part="${DOTIG_REPO}home/xdg_config"
-      ;;
-    "${DOTIG_REPO}home/xdg_data/"*)
-      _partial_dest="$XDG_DATA_HOME"
-      _removed_part="${DOTIG_REPO}home/xdg_data"
-      ;;
-    "${DOTIG_REPO}home/xdg_lib/"*)
-      _partial_dest="$XDG_LIB_HOME"
-      _removed_part="${DOTIG_REPO}home/xdg_lib"
-      ;;
-    "${DOTIG_REPO}home/xdg_state/"*)
-      _partial_dest="$XDG_STATE_HOME"
-      _removed_part="${DOTIG_REPO}home/xdg_state"
-      ;;
-    "${DOTIG_REPO}home/"*)
-      _partial_dest="$HOME"
-      _removed_part="${DOTIG_REPO}home"
-      ;;
-    *)
-      _partial_dest=""
-      _removed_part="$DOTIG_REPO"
-      ;;
-    esac
+  if [ -s "$_tmp" ]; then
+    while IFS= read -r _backup_dotfile <&3; do
+      _dotfile=$(convert_to_home_format "$_backup_dotfile")
+      if is_file_in "$_dotfile" "$HOME"; then
+        update_dotfiles_in_home "$_backup_dotfile" "$_dotfile"
+      else
+        warning "$(highlight "$_dotfile") is not in \$HOME. Symlink will not be created."
+      fi
+    done 3<"$_tmp"
 
-    _dotfile="${_partial_dest}${_backup_dotfile#$_removed_part}"
-
-    update_backup_symlink "$_dotfile" "$_backup_dotfile"
-  done 3<"$_tmp"
+    printf "\n"
+    success "Done. Symlinks have been updated except the ones you chose to skip and those that require administrator rights."
+  else
+    printf "No symlink to update.\n"
+  fi
 
   rm "$_tmp"
-
-  printf "\n"
-  success "Done. Symlinks have been updated except those that have possibly been manually skipped or needing administrator rights."
-
   remove_broken_symlinks
   return_menu
 }
 
-# Replace the symlink with the backup file.
-# Argument 1: the symlink.
-# Argument 2: the backup file.
-replace_symlink_with_file() {
-  [ $# -ne 2 ] && error_unexpected
-
-  local _symlink=$1
-  local _backup_file=$2
-
-  cp --remove-destination "$_backup_file" "$_symlink"
-  verbose "$(success "$(highlight "$_symlink") replaced with $(highlight "$_backup_file")")"
-}
-
-# Execute the action specified by the user if the symlink target does not match
-# the backup file.
-# Argument 1: the symlink.
-# Argument 2: the symlink target.
-# Argument 3: the backup file.
-handle_target_issue() {
-  [ $# -ne 3 ] && error_unexpected
-
-  local _symlink=$1
-  local _target=$2
-  local _backup_file=$3
-
-  printf "\n"
-  warning "The symlink target does not match with your backup file:"
-  printf "* Symlink: %s\n" "$(highlight "$_symlink")"
-  printf "* Symlink target: %s\n" "$(highlight "$_target")"
-  printf "* Backup file: %s\n" "$(highlight "$_backup_file")"
-
-  printf "How do you want to proceed?\n"
-  printf "[%s] Replace symlink with backup file\n" "$(option "1")"
-  printf "[%s] Skip this symlink\n" "$(option "2")"
-
-  while true; do
-    printf "Your choice: "
-    read -r _choice
-    case $_choice in
-    1)
-      replace_symlink_with_file "$_symlink" "$_backup_file"
-      break
-      ;;
-    2)
-      verbose $'\n$(skipped "$_symlink")'
-      break
-      ;;
-    *)
-      printf "\n"
-      error "Enter $(option "1") or $(option "2")."
-      ;;
-    esac
-  done
-}
-
-# Replace all symlinks in $HOME whose target is in $DOTFILES with the
-# backup file.
+# Replace symlinks in $HOME that match a backup in Dotig repo.
 remove_symlinks() {
+  local _backup
   local _symlink
   local _symlink_target
-  local _backup_dotfile
   local _tmp
 
-  printf "\nReplacing symlinks with original files...\n"
+  printf "\nReplacing symlinks in \$HOME with a copy of files in %s...\n" "$(get_requested_env_var)"
 
   _tmp=$(mktemp "${TMPDIR:-/tmp}/dotig.XXXXXX")
   find "$HOME" -type l -not \( -path "$DOTIG_REPO/*" -prune \) -ilname "$DOTIG_REPO*" -print >"$_tmp"
 
-  while IFS= read -r _symlink <&3; do
-    _symlink_target=$(readlink "$_symlink") || true
+  if [ -s "$_tmp" ]; then
+    while IFS= read -r _symlink <&3; do
+      _symlink_target=$(readlink "$_symlink") || true
+      _backup=$(convert_to_dotig_format "$_symlink")
 
-    case $_symlink_target in
-    "${DOTIG_REPO}home/xdg_bin/"*)
-      _partial_dest="${DOTIG_REPO}home/xdg_bin"
-      _removed_part="$XDG_BIN_HOME"
-      ;;
-    "${DOTIG_REPO}home/xdg_cache/"*)
-      _partial_dest="${DOTIG_REPO}home/xdg_cache"
-      _removed_part="$XDG_CACHE_HOME"
-      ;;
-    "${DOTIG_REPO}home/xdg_config/"*)
-      _partial_dest="${DOTIG_REPO}home/xdg_config"
-      _removed_part="$XDG_CONFIG_HOME"
-      ;;
-    "${DOTIG_REPO}home/xdg_data/"*)
-      _partial_dest="${DOTIG_REPO}home/xdg_data"
-      _removed_part="$XDG_DATA_HOME"
-      ;;
-    "${DOTIG_REPO}home/xdg_lib/"*)
-      _partial_dest="${DOTIG_REPO}home/xdg_lib"
-      _removed_part="$XDG_LIB_HOME"
-      ;;
-    "${DOTIG_REPO}home/xdg_state/"*)
-      _partial_dest="${DOTIG_REPO}home/xdg_state"
-      _removed_part="$XDG_STATE_HOME"
-      ;;
-    "${DOTIG_REPO}home/"*)
-      _partial_dest="${DOTIG_REPO}home"
-      _removed_part="$HOME"
-      ;;
-    *)
-      _partial_dest="$DOTIG_REPO"
-      _removed_part=""
-      ;;
-    esac
+      if [ "$_backup" = "$_symlink_target" ]; then
+        remove_file "$_symlink"
+        copy_file "$_backup" "$_symlink"
+      else
+        if ask_target_conflict "$_backup" "$_symlink"; then
+          remove_file "$_symlink"
+          copy_file "$_backup" "$_symlink"
+        else
+          skipped "$(highlight "$_symlink")"
+        fi
+      fi
+    done 3<"$_tmp"
 
-    _backup_dotfile=${_partial_dest}${_symlink#$_removed_part}
-
-    if [ "$_backup_dotfile" = "$_symlink_target" ]; then
-      replace_symlink_with_file "$_symlink" "$_backup_dotfile"
-    else
-      handle_target_issue "$_symlink" "$_symlink_target" "$_backup_dotfile"
-    fi
-
-  done 3<"$_tmp"
+    printf "\n"
+    success "Done. Symlinks have been replaced except the ones you chose to skip."
+  else
+    printf "No symlink to remove.\n"
+  fi
 
   rm "$_tmp"
-
-  printf "\n"
-  success "Done. Symlinks have been replaced except those that have possibly been manually skipped."
-
+  remove_broken_symlinks
   return_menu
 }
 
@@ -1974,7 +1995,7 @@ return_menu() {
   local _choice
 
   while true; do
-    printf "\nWhat do you want to do: return to the menu [%s] or exit [%s]? " "$(option "r")" "$(option "e")"
+    printf "\nWhat do you want to do: return to the menu [%s] or quit [%s]? " "$(option "r")" "$(option "q")"
     read -r _choice
 
     case $_choice in
@@ -1982,7 +2003,7 @@ return_menu() {
     [qQ]) exit ;;
     *)
       printf "\n"
-      error "Invalid choice. Please enter $(option "r") (return) or $(option "e") (exit)."
+      error "Invalid choice. Please enter $(option "r") (return) or $(option "q") (quit)."
       ;;
     esac
   done
