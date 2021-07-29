@@ -104,13 +104,18 @@ _color_yellow=$(printf '\e[33m')
 ###############################################################################
 # Globals parameters
 _disable_menu="false"
+_is_cli="false"
+_private_dotfiles="false"
 _show_repo_status="true"
 _verbose="false"
-_private_dotfiles="false"
 
 # Update symlinks parameters
+_check_broken_symlinks="false"
 _ignore_duplicate="false"
 _ignore_symlink_different_target="false"
+
+# Remove symlinks parameters
+_with_broken_symlinks="false"
 
 # Status parameters
 _show_dirty_filenames="false"
@@ -1353,7 +1358,13 @@ update_symlinks() {
   fi
 
   rm "$_tmp"
-  ask_remove_broken_symlinks
+
+  if [ $_is_cli = "false" ]; then
+    ask_remove_broken_symlinks
+  elif [ $_is_cli = "true" ] && [ $_check_broken_symlinks = "true" ]; then
+    remove_broken_symlinks
+  fi
+
   return_menu
 }
 
@@ -1394,7 +1405,13 @@ remove_symlinks() {
   fi
 
   rm "$_tmp"
-  ask_remove_broken_symlinks
+
+  if [ $_is_cli = "false" ]; then
+    ask_remove_broken_symlinks
+  elif [ $_is_cli = "true" ] && [ $_with_broken_symlinks = "true" ]; then
+    remove_broken_symlinks
+  fi
+
   return_menu
 }
 
@@ -1814,6 +1831,7 @@ The update command allows Dotig to create or update all the symlinks based on yo
 It only handles files in home directory. If your repo contains files outside your \$HOME you need to create the symlinks yourself.
 
 # OPTIONS
+-cb, --check-broken       Also check for broken symlinks. If any, remove them.
 -h, --help                Print this help.
 -ia, --ignore-all         Always skip files when a conflict exists. You can
                           achieve the same thing by combining --ignore-duplicate
@@ -1957,9 +1975,10 @@ dotig rm [OPTIONS]
 The rm command allows Dotig to replace all the symlinks in your \$HOME whose target is in your repository with the original file. The file insde your repository will be kept.
 
 # OPTIONS
--h, --help        Print this help.
--p, --private     Use your private dotfiles repository instead of the default.
--v, --verbose     Explain what is done.
+-h, --help            Print this help.
+-p, --private         Use your private dotfiles repository instead.
+-v, --verbose         Explain what is done.
+-wb, --with-broken    Also remove broken symlinks.
 
 # BUGS
 If you find any bug, you can report it on https://github.com/ArmandPhilippot/dotig/issues.
@@ -2128,6 +2147,10 @@ launch_update_symlinks() {
       _ignore_symlink_different_target="true"
       shift
       ;;
+    --check-broken | -cb)
+      _check_broken_symlinks="true"
+      shift
+      ;;
     --ignore-duplicate | -id)
       _ignore_duplicate="true"
       shift
@@ -2294,6 +2317,10 @@ launch_remove_symlinks() {
       _verbose="true"
       shift
       ;;
+    --with-broken | -wb)
+      _with_broken_symlinks="true"
+      shift
+      ;;
     *) invalid_usage "rm" ;;
     esac
   done
@@ -2343,6 +2370,7 @@ set_command() {
 
   set_xdg_paths
   _disable_menu="true"
+  _is_cli="true"
 
   case $_command_name in
   add) launch_add_dotfiles "$@" ;;
