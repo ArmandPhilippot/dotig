@@ -1192,13 +1192,27 @@ remove_broken_symlinks() {
       remove_file "$_file"
     done 3<"$_tmp"
 
-    verbose "$(success "All broken symlinks removed...")"
+    success "All broken symlinks removed."
   else
-    verbose "No broken symlinks found."
+    success "No broken symlinks found."
   fi
 
   rm "$_tmp"
   verbose "$(success "Broken symlinks checked.")"
+}
+
+# Ask user if he wants to check for broken symlinks.
+ask_remove_broken_symlinks() {
+  local _user_choice
+
+  printf "\nDo you want to check for broken symlinks? [%s/%s] " "$(option "y")" "$(option "n")"
+  read -r _user_choice
+
+  case $_user_choice in
+  [yY]) remove_broken_symlinks ;;
+  [nN]) : ;;
+  *) error "Invalid option. Enter $(option "y") (yes) or $(option "n") (no)." ;;
+  esac
 }
 
 # Ask user which action to perform in case of symlink target conflict.
@@ -1339,7 +1353,7 @@ update_symlinks() {
   fi
 
   rm "$_tmp"
-  remove_broken_symlinks
+  ask_remove_broken_symlinks
   return_menu
 }
 
@@ -1380,7 +1394,7 @@ remove_symlinks() {
   fi
 
   rm "$_tmp"
-  remove_broken_symlinks
+  ask_remove_broken_symlinks
   return_menu
 }
 
