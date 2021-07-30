@@ -114,8 +114,8 @@ _REPO_STATUS="false"
 
 # Symlinking parameters
 _CHECK_BROKEN_SYMLINKS="false"
-_IGNORE_DUPLICATE="false"
-_IGNORE_TARGET="false"
+_SKIP_DUPLICATE="false"
+_SKIP_TARGET="false"
 
 # Git parameters
 _COMMIT_FILES="all"
@@ -182,6 +182,21 @@ is_help_option() {
   [ $# -ne 1 ] && error_unexpected
 
   [ "$1" = "-h" ] || [ "$1" = "--help" ]
+}
+
+# Initialize default parameters if a command is used.
+set_cli_default_parameters() {
+  _CLI_MODE="true"
+  _DISABLE_MENU="true"
+  _SKIP_DUPLICATE="true"
+  _SKIP_TARGET="true"
+}
+
+# Initialize default parameters if interactive mode is use.
+set_interactive_default_parameters() {
+  _INTERACTIVE_MODE="true"
+  _SKIP_DUPLICATE="false"
+  _SKIP_TARGET="false"
 }
 
 ###############################################################################
@@ -1335,8 +1350,8 @@ check_symlink_target() {
   if [ "$_home_symlink_target" = "$_backup" ]; then
     skipped "$(highlight "$_home_symlink") is up-to-date."
   else
-    if [ $_IGNORE_TARGET = "true" ]; then
-      skipped "$_home_symlink (different target)."
+    if [ $_SKIP_TARGET = "true" ]; then
+      skipped "$(highlight "$_home_symlink") (different target)."
     else
       handle_target_conflict "$_backup" "$_home_symlink" "$_home_symlink_target"
     fi
@@ -1356,7 +1371,7 @@ update_dotfiles_in_home() {
   if [ -h "$_dest" ]; then
     check_symlink_target "$_source" "$_dest"
   elif [ -f "$_dest" ]; then
-    if [ $_IGNORE_DUPLICATE = "true" ]; then
+    if [ $_SKIP_DUPLICATE = "true" ]; then
       skipped "$(highlight "$_dest") (duplicate)."
     else
       ask_duplicate_dotfile "$_dest" "$_source"
@@ -1871,20 +1886,23 @@ The update command allows Dotig to create or update all the symlinks based on yo
 It only handles files in home directory. If your repo contains files outside your \$HOME you need to create the symlinks yourself.
 
 # OPTIONS
--cb, --check-broken       Also check for broken symlinks. If any, remove them.
+-a, --all                 Check for broken symlinks and ask user how to handle
+                          conflicts instead of skipping. You can achieve the
+                          same thing by combining the following options: -b, -d
+                          and -t.
+-b, --broken-symlinks     Also check for broken symlinks. If any, remove them.
+-d, --duplicate           If a file with the same name exists but it is not a
+                          symlink, ask user how to handle conflict instead of
+                          skipping.
 -i, --interactive         Interactive mode. Helpful to configure your dotfiles
                           repo if it is the first time or to print additional
                           dialogs.
 -h, --help                Print this help.
--ia, --ignore-all         Always skip files when a conflict exists. You can
-                          achieve the same thing by combining --ignore-duplicate
-                          and --ignore-target.
--id, --ignore-duplicate   Always skip symlinking when a file with the same name
-                          already exists.
--it, --ignore-target      Always skip symlinking when a symlink already exists
-                          even if the target is not the same.
 -p, --private             Use your private dotfiles repository instead of the
                           default.
+-t, --target              If a symlink already exists but its target does not
+                          match the backup file, ask user how to handle
+                          conflict instead of skipping.
 -v, --verbose             Explain what is done.
 
 # BUGS
@@ -2226,29 +2244,30 @@ launch_update_symlinks() {
 
   while [ $# -ge 1 ]; do
     case $1 in
-    --check-broken | -cb)
+    --all | -a)
+      _CHECK_BROKEN_SYMLINKS="true"
+      _SKIP_DUPLICATE="false"
+      _SKIP_TARGET="false"
+      shift
+      ;;
+    --broken-symlinks | -b)
       _CHECK_BROKEN_SYMLINKS="true"
       shift
       ;;
-    --ignore-all | -ia)
-      _IGNORE_DUPLICATE="true"
-      _IGNORE_TARGET="true"
-      shift
-      ;;
-    --ignore-duplicate | -id)
-      _IGNORE_DUPLICATE="true"
-      shift
-      ;;
-    --ignore-target | -it)
-      _IGNORE_TARGET="true"
+    --duplicate | -d)
+      _SKIP_DUPLICATE="false"
       shift
       ;;
     --interactive | -i)
-      _INTERACTIVE_MODE="true"
+      set_interactive_default_parameters
       shift
       ;;
     --private | -p)
       _PRIVATE_REPO="true"
+      shift
+      ;;
+    --target | -t)
+      _SKIP_TARGET="false"
       shift
       ;;
     --verbose | -v)
@@ -2504,8 +2523,7 @@ set_command() {
   shift
 
   set_xdg_paths
-  _DISABLE_MENU="true"
-  _CLI_MODE="true"
+  set_cli_default_parameters
 
   case $_command_name in
   add) launch_add_dotfiles "$@" ;;
