@@ -152,15 +152,19 @@ is_command_installed() {
 # Functions to handle Dotig parameters/arguments.
 ###############################################################################
 
-# Check if verbose mode is activated.
-is_verbose() {
-  [ "$_VERBOSE" = "true" ]
+# Check if CLI mode is activated.
+is_cli_mode() {
+  [ "$_CLI_MODE" = "true" ]
 }
 
-verbose() {
-  if is_verbose; then
-    printf "%s\n" "$1"
-  fi
+# Check if interactive mode is activated.
+is_interactive_mode() {
+  [ "$_INTERACTIVE_MODE" = "true" ]
+}
+
+# Check if verbose mode is activated.
+is_verbose_mode() {
+  [ "$_VERBOSE" = "true" ]
 }
 
 # Check if the first argument provided is an available command.
@@ -190,7 +194,7 @@ is_version_option() {
 
 ###############################################################################
 # 2.3. Colors Helpers
-# Functions to print some messages in color.
+# Functions to print some messages in color or not.
 ###############################################################################
 
 option() {
@@ -228,6 +232,12 @@ status() {
   esac
 
   printf "Status: %s%s%s\n" "$_status_color" "$_msg" "$_COLOR_RESET"
+}
+
+verbose() {
+  if is_verbose_mode; then
+    printf "%s\n" "$1"
+  fi
 }
 
 ###############################################################################
@@ -865,7 +875,7 @@ set_dotfiles_repo() {
     verbose "For conveniance, Dotig uses \$DOTFILES and \$DOTFILES_PRIVATE variables to determine your dotfiles repos."
     verbose $'If they are not set, you may want to declare them for future use.\n'
 
-    if [ $_INTERACTIVE_MODE = "true" ]; then
+    if is_interactive_mode; then
       _DOTIG_REPO=$(ask_path)
     else
       error_repo_not_set
@@ -873,14 +883,14 @@ set_dotfiles_repo() {
   elif ! is_valid_directory "$_DOTIG_REPO"; then
     warning "It seems $(get_requested_env_var) does not contain a valid directory."
 
-    if [ $_INTERACTIVE_MODE = "true" ]; then
+    if is_interactive_mode; then
       _DOTIG_REPO=$(ask_path)
     else
       error_repo_not_set
     fi
   fi
 
-  if [ $_INTERACTIVE_MODE = "true" ]; then
+  if is_interactive_mode; then
     while ! is_correct_path "$_DOTIG_REPO"; do
       _DOTIG_REPO=$(ask_path)
     done
@@ -1017,7 +1027,7 @@ check_git_configuration() {
   verbose $'\nChecking if Git is configured...'
 
   if ! is_git_repo; then
-    if [ $_INTERACTIVE_MODE = "true" ]; then
+    if is_interactive_mode; then
       ask_to_init_git
       verbose "Git initialization..."
       git -C "$_DOTIG_REPO" init
@@ -1393,9 +1403,9 @@ update_symlinks() {
 
   rm "$_tmp"
 
-  if [ $_CLI_MODE = "false" ] || [ $_INTERACTIVE_MODE = "true" ]; then
+  if ! is_cli_mode || is_interactive_mode; then
     ask_remove_broken_symlinks
-  elif [ $_CLI_MODE = "true" ] && [ $_CHECK_BROKEN_SYMLINKS = "true" ]; then
+  elif is_cli_mode && [ "$_CHECK_BROKEN_SYMLINKS" = "true" ]; then
     remove_broken_symlinks
   fi
 
@@ -1440,9 +1450,9 @@ remove_symlinks() {
 
   rm "$_tmp"
 
-  if [ $_CLI_MODE = "false" ] || [ $_INTERACTIVE_MODE = "true" ]; then
+  if ! is_cli_mode || is_interactive_mode; then
     ask_remove_broken_symlinks
-  elif [ $_CLI_MODE = "true" ] && [ $_CHECK_BROKEN_SYMLINKS = "true" ]; then
+  elif is_cli_mode && [ "$_CHECK_BROKEN_SYMLINKS" = "true" ]; then
     remove_broken_symlinks
   fi
 
