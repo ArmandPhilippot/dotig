@@ -72,7 +72,7 @@ set -e
 ###############################################################################
 # 1.1. Globals
 ###############################################################################
-_DOTIG_COMMANDS=("add" "update" "commit" "push" "pull" "submodule" "rm" "status")
+_DOTIG_COMMANDS=("add" "update" "commit" "push" "pull" "submodule" "rm" "status" "version")
 _DOTIG_LOGO=$(
   cat <<-EOF
 #######################################
@@ -182,14 +182,6 @@ is_help_option() {
   [ $# -ne 1 ] && error_unexpected
 
   [ "$1" = "-h" ] || [ "$1" = "--help" ]
-}
-
-# Check if the provided argument matches the version option.
-# Argument 1: an argument to test.
-is_version_option() {
-  [ $# -ne 1 ] && error_unexpected
-
-  [ "$1" = "--version" ]
 }
 
 ###############################################################################
@@ -1807,6 +1799,7 @@ rm                  Replace all symlinks with the original file.
                     The original will be conserved in your repository.
 status              Display the status of your dotfiles repository.
                     Check for dirty files and if push or pull is needed.
+version             Print Dotig version and check for a new release.
 
 # OPTIONS
 -i, --interactive   Interactive mode. Helpful to configure your dotfiles repo
@@ -1816,7 +1809,6 @@ status              Display the status of your dotfiles repository.
 -ns, --no-status    Do not show the repo status.
 -p, --private       Use your private dotfiles repository instead of the default.
 -v, --verbose       Explain what is done.
---version           Print Dotig version and check for new releases.
 
 # CONFIGURATION
 DOTFILES            Environment variable to define the path of your dotfiles
@@ -2070,6 +2062,31 @@ This command will tell you if you need to pull or push changes. If your reposito
 -i, --interactive   Interactive mode. Helpful to configure your dotfiles repo
                     if it is the first time or to print additional dialogs.
 -p, --private       Use your private dotfiles repository instead of the default.
+-v, --verbose       Explain what is done.
+
+# BUGS
+If you find any bug, you can report it on https://github.com/ArmandPhilippot/dotig/issues.
+
+# ABOUT
+Version           Dotig $_DOTIG_VERSION
+License           MIT
+Project URL       https://github.com/ArmandPhilippot/dotig
+EOF
+
+  exit
+}
+
+# Display the help for version command then exit.
+print_version_help() {
+  cat <<EOF
+# USAGE
+dotig version [OPTIONS]
+
+# DESCRIPTION
+The version command allows Dotig to print its version and to check for a new release.
+
+# OPTIONS
+-h, --help          Print this help.
 -v, --verbose       Explain what is done.
 
 # BUGS
@@ -2454,6 +2471,29 @@ launch_get_repo_status() {
   get_repo_status
 }
 
+# Handle options version command then execute functions.
+launch_dotig_version() {
+  if is_help_option "$1"; then
+    [ $# -gt 1 ] && invalid_usage "version"
+    print_version_help
+    exit
+  fi
+
+  while [ $# -ge 1 ]; do
+    case $1 in
+    --verbose | -v)
+      _VERBOSE="true"
+      shift
+      ;;
+    *) invalid_usage "version" ;;
+    esac
+  done
+
+  print_logo
+  print_dotig_version
+  check_dotig_updates
+}
+
 # Redirect provided command to the right function.
 # Require 1 or more arguments.
 # Argument 1: a valid command.
@@ -2476,6 +2516,7 @@ set_command() {
   submodule) launch_update_all_submodules "$@" ;;
   rm) launch_remove_symlinks "$@" ;;
   status) launch_get_repo_status "$@" ;;
+  version) launch_dotig_version "$@" ;;
   *) error_unexpected ;;
   esac
 
@@ -2487,24 +2528,14 @@ set_command() {
 set_options() {
   [ $# -eq 0 ] && error_unexpected
 
-  if is_help_option "$1" || is_version_option "$1"; then
-    [ $# -gt 1 ] && invalid_usage
-    _DISABLE_MENU="true"
-
-    case $1 in
-    --help | -h) print_dotig_help ;;
-    --version)
-      print_dotig_version
-      check_dotig_updates
-      ;;
-    *) error_unexpected ;;
-    esac
-
-    exit
-  fi
-
   while [ $# -ge 1 ]; do
     case $1 in
+    --help | -h)
+      [ $# -gt 1 ] && invalid_usage
+      _DISABLE_MENU="true"
+      print_dotig_help
+      exit
+      ;;
     --interactive | -i)
       _INTERACTIVE_MODE="true"
       shift
