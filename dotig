@@ -104,6 +104,7 @@ _color_yellow=$(printf '\e[33m')
 ###############################################################################
 # Globals parameters
 _disable_menu="false"
+_interactive_mode="false"
 _is_cli="false"
 _private_dotfiles="false"
 _show_repo_status="true"
@@ -541,6 +542,24 @@ invalid_usage() {
   exit 1
 }
 
+# Display an error if repo not set then exit.
+error_repo_not_set() {
+  error "Without interactive mode, $(get_requested_env_var) need to be set."
+  printf "Try again with --interactive (or -i) option or set %s.\n" "$(get_requested_env_var)"
+  printf "Exit.\n"
+  cleanup
+  exit 1
+}
+
+# Display an error if Git is not configured.
+error_git_not_configured() {
+  error "Without interactive mode, Git need to be configured."
+  printf "Try again with --interactive (or -i) option or configure Git manually.\n"
+  printf "Exit.\n"
+  cleanup
+  exit 1
+}
+
 # Execute cleanup function if these signals are caught.
 trap cleanup SIGHUP SIGINT SIGQUIT SIGTERM
 
@@ -846,15 +865,27 @@ set_dotfiles_repo() {
     warning "You did not define $(get_requested_env_var) in your shell configuration."
     verbose "For conveniance, Dotig uses \$DOTFILES and \$DOTFILES_PRIVATE variables to determine your dotfiles repos."
     verbose $'If they are not set, you may want to declare them for future use.\n'
-    DOTIG_REPO=$(ask_path)
+
+    if [ $_interactive_mode = "true" ]; then
+      DOTIG_REPO=$(ask_path)
+    else
+      error_repo_not_set
+    fi
   elif ! is_valid_directory "$DOTIG_REPO"; then
     warning "It seems $(get_requested_env_var) does not contain a valid directory."
-    DOTIG_REPO=$(ask_path)
+
+    if [ $_interactive_mode = "true" ]; then
+      DOTIG_REPO=$(ask_path)
+    else
+      error_repo_not_set
+    fi
   fi
 
-  while ! is_correct_path "$DOTIG_REPO"; do
-    DOTIG_REPO=$(ask_path)
-  done
+  if [ $_interactive_mode = "true" ]; then
+    while ! is_correct_path "$DOTIG_REPO"; do
+      DOTIG_REPO=$(ask_path)
+    done
+  fi
 
   DOTIG_REPO=$(get_absolute_path "$DOTIG_REPO")
   DOTIG_REPO=$(normalize_path "$DOTIG_REPO")
@@ -987,10 +1018,14 @@ check_git_configuration() {
   verbose $'\nChecking if Git is configured...'
 
   if ! is_git_repo; then
-    ask_to_init_git
-    verbose "Git initialization..."
-    git -C "$DOTIG_REPO" init
-    verbose "$(success "Git initialized.")"
+    if [ $_interactive_mode = "true" ]; then
+      ask_to_init_git
+      verbose "Git initialization..."
+      git -C "$DOTIG_REPO" init
+      verbose "$(success "Git initialized.")"
+    else
+      error_git_not_configured
+    fi
   fi
 
   configure_git
@@ -1359,7 +1394,7 @@ update_symlinks() {
 
   rm "$_tmp"
 
-  if [ $_is_cli = "false" ]; then
+  if [ $_is_cli = "false" ] || [ $_interactive_mode = "true" ]; then
     ask_remove_broken_symlinks
   elif [ $_is_cli = "true" ] && [ $_check_broken_symlinks = "true" ]; then
     remove_broken_symlinks
@@ -1406,7 +1441,7 @@ remove_symlinks() {
 
   rm "$_tmp"
 
-  if [ $_is_cli = "false" ]; then
+  if [ $_is_cli = "false" ] || [ $_interactive_mode = "true" ]; then
     ask_remove_broken_symlinks
   elif [ $_is_cli = "true" ] && [ $_with_broken_symlinks = "true" ]; then
     remove_broken_symlinks
@@ -1765,6 +1800,8 @@ status              Display the status of your dotfiles repository.
                     Check for dirty files and if push or pull is needed.
 
 # OPTIONS
+-i, --interactive   Interactive mode. Helpful to configure your dotfiles repo
+                    if it is the first time or to print additional dialogs.
 -h, --help          Print this help. If used after a command, you can print help
                     for this command.
 -ns, --no-status    Do not show the repo status.
@@ -1804,9 +1841,11 @@ dotig add [OPTIONS] [<FILES...>]
 The add command allows Dotig to copy your dotfiles inside your backup directory then to symlink them. You can provide one or more files. If it is a directory, the files inside will be processed.
 
 # OPTIONS
--h, --help        Print this help.
--p, --private     Use your private dotfiles repository instead of the default.
--v, --verbose     Explain what is done.
+-i, --interactive   Interactive mode. Helpful to configure your dotfiles repo
+                    if it is the first time or to print additional dialogs.
+-h, --help          Print this help.
+-p, --private       Use your private dotfiles repository instead of the default.
+-v, --verbose       Explain what is done.
 
 # BUGS
 If you find any bug, you can report it on https://github.com/ArmandPhilippot/dotig/issues.
@@ -1832,6 +1871,9 @@ It only handles files in home directory. If your repo contains files outside you
 
 # OPTIONS
 -cb, --check-broken       Also check for broken symlinks. If any, remove them.
+-i, --interactive         Interactive mode. Helpful to configure your dotfiles
+                          repo if it is the first time or to print additional
+                          dialogs.
 -h, --help                Print this help.
 -ia, --ignore-all         Always skip files when a conflict exists. You can
                           achieve the same thing by combining --ignore-duplicate
@@ -1866,14 +1908,16 @@ dotig commit [OPTIONS]
 The commit command allows Dotig to staged all changes in your repository (untracked, modified, renamed files for example) then to call the Git commit command. Then, you will be able to enter a commit message.
 
 # OPTIONS
--h, --help        Print this help.
--m, --message     Use the given string as commit message. If used with another
-                  option, the message must follow the -m or --message option.
--p, --private     Use your private dotfiles repository instead of the default.
--t, --tracked     Commit only tracked files. Ignore untracked.
--u, --untracked   Commit only untracked files. Ignore others (i.e. modified or
-                  deleted).
--v, --verbose     Explain what is done.
+-h, --help          Print this help.
+-i, --interactive   Interactive mode. Helpful to configure your dotfiles repo
+                    if it is the first time or to print additional dialogs.
+-m, --message       Use the given string as commit message. If used with another
+                    option, the message must follow the -m or --message option.
+-p, --private       Use your private dotfiles repository instead of the default.
+-t, --tracked       Commit only tracked files. Ignore untracked.
+-u, --untracked     Commit only untracked files. Ignore others (i.e. modified or
+                    deleted).
+-v, --verbose       Explain what is done.
 
 # BUGS
 If you find any bug, you can report it on https://github.com/ArmandPhilippot/dotig/issues.
@@ -1897,9 +1941,11 @@ dotig push [OPTIONS]
 The push command allows Dotig to push all the commits to your remote repository. If Dotig cannot find new commits, it will print that push is not necessary.
 
 # OPTIONS
--h, --help        Print this help.
--p, --private     Use your private dotfiles repository instead of the default.
--v, --verbose     Explain what is done.
+-h, --help          Print this help.
+-i, --interactive   Interactive mode. Helpful to configure your dotfiles repo
+                    if it is the first time or to print additional dialogs.
+-p, --private       Use your private dotfiles repository instead of the default.
+-v, --verbose       Explain what is done.
 
 # BUGS
 If you find any bug, you can report it on https://github.com/ArmandPhilippot/dotig/issues.
@@ -1923,9 +1969,11 @@ dotig pull [OPTIONS]
 The pull command allows Dotig to fetch your remote repository then to merge all incoming changes inside your local repository using the Git rebase strategy. If Dotig cannot find new remote changes, it will print that pull is not necessary.
 
 # OPTIONS
--h, --help        Print this help.
--p, --private     Use your private dotfiles repository instead of the default.
--v, --verbose     Explain what is done.
+-h, --help          Print this help.
+-i, --interactive   Interactive mode. Helpful to configure your dotfiles repo
+                    if it is the first time or to print additional dialogs.
+-p, --private       Use your private dotfiles repository instead of the default.
+-v, --verbose       Explain what is done.
 
 # BUGS
 If you find any bug, you can report it on https://github.com/ArmandPhilippot/dotig/issues.
@@ -1949,9 +1997,11 @@ dotig submodule [OPTIONS]
 If you are using git submodules inside your dotfiles repository, the submodule command allows Dotig to update all of them.
 
 # OPTIONS
--h, --help        Print this help.
--p, --private     Use your private dotfiles repository instead of the default.
--v, --verbose     Explain what is done.
+-h, --help          Print this help.
+-i, --interactive   Interactive mode. Helpful to configure your dotfiles repo
+                    if it is the first time or to print additional dialogs.
+-p, --private       Use your private dotfiles repository instead of the default.
+-v, --verbose       Explain what is done.
 
 # BUGS
 If you find any bug, you can report it on https://github.com/ArmandPhilippot/dotig/issues.
@@ -1976,6 +2026,8 @@ The rm command allows Dotig to replace all the symlinks in your \$HOME whose tar
 
 # OPTIONS
 -h, --help            Print this help.
+-i, --interactive     Interactive mode. Helpful to configure your dotfiles repo
+                      if it is the first time or to print additional dialogs.
 -p, --private         Use your private dotfiles repository instead.
 -v, --verbose         Explain what is done.
 -wb, --with-broken    Also remove broken symlinks.
@@ -2003,11 +2055,13 @@ The status command allows Dotig to display information about your repository sta
 This command will tell you if you need to pull or push changes. If your repository is dirty it will also print some information to help you know why by displaying the number of modified, staged, removed or untracked files.
 
 # OPTIONS
--e, --expanded    If your local repository is dirty, print the concerned files
-                  by category (i.e. modified files, deleted files...).
--h, --help        Print this help.
--p, --private     Use your private dotfiles repository instead of the default.
--v, --verbose     Explain what is done.
+-e, --expanded      If your local repository is dirty, print the concerned files
+                    by category (i.e. modified files, deleted files...).
+-h, --help          Print this help.
+-i, --interactive   Interactive mode. Helpful to configure your dotfiles repo
+                    if it is the first time or to print additional dialogs.
+-p, --private       Use your private dotfiles repository instead of the default.
+-v, --verbose       Explain what is done.
 
 # BUGS
 If you find any bug, you can report it on https://github.com/ArmandPhilippot/dotig/issues.
@@ -2116,6 +2170,10 @@ launch_add_dotfiles() {
 
   while [ $# -ge 1 ]; do
     case $1 in
+    --interactive | -i)
+      _interactive_mode="true"
+      shift
+      ;;
     --private | -p)
       _private_dotfiles="true"
       shift
@@ -2142,13 +2200,13 @@ launch_update_symlinks() {
 
   while [ $# -ge 1 ]; do
     case $1 in
+    --check-broken | -cb)
+      _check_broken_symlinks="true"
+      shift
+      ;;
     --ignore-all | -ia)
       _ignore_duplicate="true"
       _ignore_symlink_different_target="true"
-      shift
-      ;;
-    --check-broken | -cb)
-      _check_broken_symlinks="true"
       shift
       ;;
     --ignore-duplicate | -id)
@@ -2157,6 +2215,10 @@ launch_update_symlinks() {
       ;;
     --ignore-target | -it)
       _ignore_symlink_different_target="true"
+      shift
+      ;;
+    --interactive | -i)
+      _interactive_mode="true"
       shift
       ;;
     --private | -p)
@@ -2187,6 +2249,10 @@ launch_commit_changes() {
 
   while [ $# -ge 1 ]; do
     case $1 in
+    --interactive | -i)
+      _interactive_mode="true"
+      shift
+      ;;
     --message | -m)
       shift
       _commit_message="$1"
@@ -2231,6 +2297,10 @@ launch_push_changes() {
 
   while [ $# -ge 1 ]; do
     case $1 in
+    --interactive | -i)
+      _interactive_mode="true"
+      shift
+      ;;
     --private | -p)
       _private_dotfiles="true"
       shift
@@ -2257,6 +2327,10 @@ launch_pull_changes() {
 
   while [ $# -ge 1 ]; do
     case $1 in
+    --interactive | -i)
+      _interactive_mode="true"
+      shift
+      ;;
     --private | -p)
       _private_dotfiles="true"
       shift
@@ -2283,6 +2357,10 @@ launch_update_all_submodules() {
 
   while [ $# -ge 1 ]; do
     case $1 in
+    --interactive | -i)
+      _interactive_mode="true"
+      shift
+      ;;
     --private | -p)
       _private_dotfiles="true"
       shift
@@ -2309,6 +2387,10 @@ launch_remove_symlinks() {
 
   while [ $# -ge 1 ]; do
     case $1 in
+    --interactive | -i)
+      _interactive_mode="true"
+      shift
+      ;;
     --private | -p)
       _private_dotfiles="true"
       shift
@@ -2341,6 +2423,10 @@ launch_get_repo_status() {
     case $1 in
     --expanded | -e)
       _show_dirty_filenames="true"
+      shift
+      ;;
+    --interactive | -i)
+      _interactive_mode="true"
       shift
       ;;
     --private | -p)
@@ -2410,6 +2496,10 @@ set_options() {
 
   while [ $# -ge 1 ]; do
     case $1 in
+    --interactive | -i)
+      _interactive_mode="true"
+      shift
+      ;;
     --no-status | -ns)
       _show_repo_status="false"
       shift
