@@ -2044,12 +2044,13 @@ dotig rm [OPTIONS]
 The rm command allows Dotig to replace all the symlinks in your \$HOME whose target is in your repository with the original file. The file insde your repository will be kept.
 
 # OPTIONS
--h, --help            Print this help.
--i, --interactive     Interactive mode. Helpful to configure your dotfiles repo
-                      if it is the first time or to print additional dialogs.
--p, --private         Use your private dotfiles repository instead.
--v, --verbose         Explain what is done.
--wb, --with-broken    Also remove broken symlinks.
+-h, --help                Print this help.
+-i, --interactive         Interactive mode. Helpful to configure your dotfiles
+                          repo if it is the first time or to print additional
+                          dialogs.
+-p, --private             Use your private dotfiles repository instead.
+-v, --verbose             Explain what is done.
+-b, --broken-symlinks     Also remove broken symlinks.
 
 # BUGS
 If you find any bug, you can report it on https://github.com/ArmandPhilippot/dotig/issues.
@@ -2432,6 +2433,10 @@ launch_remove_symlinks() {
 
   while [ $# -ge 1 ]; do
     case $1 in
+    --broken-symlinks | -b)
+      _CHECK_BROKEN_SYMLINKS="true"
+      shift
+      ;;
     --interactive | -i)
       _INTERACTIVE_MODE="true"
       shift
@@ -2442,10 +2447,6 @@ launch_remove_symlinks() {
       ;;
     --verbose | -v)
       _VERBOSE="true"
-      shift
-      ;;
-    --with-broken | -wb)
-      _CHECK_BROKEN_SYMLINKS="true"
       shift
       ;;
     *) invalid_usage "rm" ;;
