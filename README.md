@@ -96,7 +96,7 @@ dotig
 
 Then, let you guide with the menu. Or, you can also use Dotig via CLI.
 
-If it is the first time you run Dotig, you may want to use the `--verbose` option. See [CLI options](#options). It is not required, but this way you can understand what is done.
+If it is the first time you run Dotig, you may want to use `--interactive` and `--verbose` options. See [CLI options](#options). It is not required, but this way you can understand what is done.
 
 ## CLI
 
@@ -118,13 +118,14 @@ If you want to use Dotig from CLI, it is recommended to set the `DOTFILES` envir
 
 |Options|Usage|Description|
 |---|---|---|
+|`-i`<br />`--interactive`|`dotig -i`<br />`dotig --interactive`|Interactive mode. Helpful to configure your repo or to print additional dialogs.|
 |`-h`<br />`--help`|`dotig -h`<br />`dotig --help`|Show Dotig help.|
 |`-ns`<br />`--no-status`|`dotig -ns`<br />`dotig --no-status`|Do not display the repo status when opening the Dotig menu.|
 |`-p`<br />`--private`|`dotig -p`<br />`dotig --private`|Use your private dotfiles repository instead of the default one.|
 |`-v`<br />`--verbose`|`dotig -v`<br />`dotig --verbose`|Verbose mode. Explain what is done.|
 |`--version`|`dotig --version`|Show Dotig version and check for new release.|
 
-Some options, like `--verbose` or `--private` can be used before or after the command. Result will be the same.
+Some options, like `--verbose`, `--private` or `--interactive` can be used before or after the command. Result will be the same.
 
 Example:
 ```
