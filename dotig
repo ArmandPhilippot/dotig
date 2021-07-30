@@ -147,6 +147,20 @@ is_command_installed() {
   [ -x "$(command -v "$1")" ]
 }
 
+# Print a spinner
+spinner() {
+  local _pid=$!
+  local _delay=0.25
+  local _spinstr='-\|/'
+  local _i=0
+
+  while kill -0 $_pid 2>/dev/null; do
+    _i=$(((_i + 1) % 4))
+    printf "[%s]\r" "${_spinstr:$_i:1}"
+    sleep $_delay
+  done
+}
+
 ###############################################################################
 # 2.2. Parameters & Arguments Helpers
 # Functions to handle Dotig parameters/arguments.
@@ -1239,14 +1253,15 @@ remove_broken_symlinks() {
 
   verbose $'\nChecking for broken symlinks...'
   _tmp=$(mktemp "${TMPDIR:-/tmp}/dotig.XXXXXX")
-  get_broken_symlinks >"$_tmp"
+  get_broken_symlinks >"$_tmp" &
+  spinner
 
   if [ -s "$_tmp" ]; then
     verbose "Removing broken symlinks..."
 
     while IFS= read -r _file <&3; do
       remove_file "$_file"
-    done 3<"$_tmp"
+    done 3<"$_tmp" &
 
     success "All broken symlinks removed."
   else
@@ -1265,7 +1280,9 @@ ask_remove_broken_symlinks() {
   read -r _user_choice
 
   case $_user_choice in
-  [yY]) remove_broken_symlinks ;;
+  [yY])
+    remove_broken_symlinks
+    ;;
   [nN]) : ;;
   *) error "Invalid option. Enter $(option "y") (yes) or $(option "n") (no)." ;;
   esac
