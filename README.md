@@ -121,7 +121,7 @@ If you want to use Dotig from CLI, it is recommended to set the `DOTFILES` envir
 |---|---|---|
 |`-i`<br />`--interactive`|`dotig -i`<br />`dotig --interactive`|Interactive mode. Helpful to configure your repo or to print additional dialogs.|
 |`-h`<br />`--help`|`dotig -h`<br />`dotig --help`|Show Dotig help.|
-|`-ns`<br />`--no-status`|`dotig -ns`<br />`dotig --no-status`|Do not display the repo status when opening the Dotig menu.|
+|`-s`<br />`--status`|`dotig -s`<br />`dotig --status`|Print a summary of the repo status before Dotig menu.|
 |`-p`<br />`--private`|`dotig -p`<br />`dotig --private`|Use your private dotfiles repository instead of the default one.|
 |`-v`<br />`--verbose`|`dotig -v`<br />`dotig --verbose`|Verbose mode. Explain what is done.|
 

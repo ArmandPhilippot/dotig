@@ -110,7 +110,7 @@ _VERBOSE="false"
 
 # Globals parameters
 _DISABLE_MENU="false"
-_REPO_STATUS="true"
+_REPO_STATUS="false"
 
 # Symlinking parameters
 _CHECK_BROKEN_SYMLINKS="false"
@@ -1632,7 +1632,7 @@ print_dirty_summary() {
   [ "$_stashed_files_count" -gt 0 ] && _expanded_status+="* $_stashed_files_count stashed files\n"
 
   verbose "$(success "Changed files counted.")"
-  printf "%b" "$_expanded_status"
+  printf "%b\n" "$_expanded_status"
 }
 
 # Display the list of changed files by category.
@@ -1806,7 +1806,7 @@ version             Print Dotig version and check for a new release.
                     if it is the first time or to print additional dialogs.
 -h, --help          Print this help. If used after a command, you can print help
                     for this command.
--ns, --no-status    Do not show the repo status.
+-s, --status        Print a summary of the repo status before Dotig menu.
 -p, --private       Use your private dotfiles repository instead of the default.
 -v, --verbose       Explain what is done.
 
@@ -2108,7 +2108,7 @@ EOF
 
 # Display the list of choices available in the main menu of Dotig.
 print_menu_options() {
-  printf "\nChoose an action to perform:\n"
+  printf "Choose an action to perform:\n"
   printf "[%s] Add dotfile(s) to your repo\n" "$(option "1")"
   printf "[%s] Update symlinks\n" "$(option "2")"
   printf "[%s] Commit dotfiles changes\n" "$(option "3")"
@@ -2145,7 +2145,7 @@ print_menu() {
     10) print_dotig_version ;;
     11) print_dotig_help ;;
     [qQ]) exit ;;
-    *) error "Invalid choice. Try again." ;;
+    *) error $'Invalid choice. Try again.\n' ;;
     esac
   done
 }
@@ -2540,8 +2540,8 @@ set_options() {
       _INTERACTIVE_MODE="true"
       shift
       ;;
-    --no-status | -ns)
-      _REPO_STATUS="false"
+    --status | -s)
+      _REPO_STATUS="true"
       shift
       ;;
     --private | -p)
