@@ -2,6 +2,30 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.0.0](https://github.com/ArmandPhilippot/dotig/compare/v1.2.2...v2.0.0) (2021-07-31)
+
+
+### ⚠ BREAKING CHANGES
+
+* **remove:** rename broken symlinks option. `dotig rm --with-broken` and `dotig rm -wb` are replaced by `dotig rm --broken-symlinks` and `dotig rm -b`. ([604669d](https://github.com/ArmandPhilippot/dotig/commit/604669dade9d43c604fa28bc87eeb74ad21dba73))
+* **update:** replace most of the options to update symlinks. `dotig update` options behave differently since v2. ([c36d921](https://github.com/ArmandPhilippot/dotig/commit/c36d9216a9999d09d2f74cc3888c6b726fe46a2f))
+* **status:** `dotig -ns` and `dotig --no-status` replaced by `dotig -s` and `dotig --status`. The status is no longer displayed by default before the Dotig menu. ([ecca1e3](https://github.com/ArmandPhilippot/dotig/commit/ecca1e34597112df566ef0466e5daf0235ad0bd9))
+* **version:** replace the version option with a command. `dotig --version` is replaced by `dotig version`. ([ae7d430](https://github.com/ArmandPhilippot/dotig/commit/ae7d430c69adefe0af73b21819daf506c0c79b4c))
+
+### Features
+
+* add a spinner when removing broken symlinks ([db8ac55](https://github.com/ArmandPhilippot/dotig/commit/db8ac55eb31f0b2672acb138d29068043d3fb8b8))
+* add an interactive mode ([f399312](https://github.com/ArmandPhilippot/dotig/commit/f399312c2109bc04ea55c31bd1cf8708851d4806))
+* **update/rm:** add a CLI option to remove broken symlinks ([dd27c6d](https://github.com/ArmandPhilippot/dotig/commit/dd27c6d33f88b0541375081092327d58d40ec9ca))
+* make broken symlinks removal optional ([f3d5bc2](https://github.com/ArmandPhilippot/dotig/commit/f3d5bc2b7ba9aa66309f950e0d77c7f2c90f09a0))
+
+
+### Bug Fixes
+
+* do not print upstream name ([41f671a](https://github.com/ArmandPhilippot/dotig/commit/41f671ae50242e207fd9531d9a5285a4a02aa68c))
+* set upstream when multiple remotes available ([b6d45b8](https://github.com/ArmandPhilippot/dotig/commit/b6d45b85696b946b373bab3e6bce376d70feb174))
+
+
 ### [1.2.2](https://github.com/ArmandPhilippot/dotig/compare/v1.2.1...v1.2.2) (2021-07-13)
 
 
