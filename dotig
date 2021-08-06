@@ -1123,7 +1123,7 @@ print_dotfiles_diff() {
     success "Both files are identical."
   else
     printf "\n"
-    warning "The two files are different. See the diff of %s:\n" "$(highlight "$_filename")"
+    warning "The two files are different. See the diff of $(highlight "$_filename"):"
     printf "%s%0.${_padding_lenght}s%s\n" "$HOME" "$_padding" "$_DOTIG_REPO"
     printf "%s\n" "$_divider"
     command diff --color -y --width="$COLUMNS" -t --suppress-common-lines "$_dotfile" "$_backup" || [ $? -eq 1 ]
