@@ -4,6 +4,9 @@
 
 A dotfiles manager to quickly setup your machine & synchronize your dotfiles.
 
+> [!WARNING]
+> This package is deprecated. I'm now using [chezmoi](https://www.chezmoi.io/) and I don't plan to maintain this package anymore.
+
 ## Description
 
 Dotig is a shell script, Bash actually, to manage your dotfiles and backup them with Git. If offers a menu or a CLI allowing you to:
